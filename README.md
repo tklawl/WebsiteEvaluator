@@ -56,3 +56,4 @@ The original workflow allowed users to:
 
 This has been replaced with the more intuitive section-based approach.
 
+# Trigger workflow
