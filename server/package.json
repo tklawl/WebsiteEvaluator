@@ -1,0 +1,20 @@
+{
+  "name": "simple-middleware-server",
+  "version": "1.0.0",
+  "description": "Simple Node.js middleware server with hello world endpoint",
+  "main": "middleware.js",
+  "scripts": {
+    "start": "node middleware.js",
+    "dev": "nodemon middleware.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

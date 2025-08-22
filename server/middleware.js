@@ -13,37 +13,6 @@ const WATSONX_API_KEY = process.env.WATSONX_API_KEY;
 const WATSONX_PROJECT_ID = process.env.WATSONX_PROJECT_ID;
 const WATSONX_MODEL_ID = process.env.WATSONX_MODEL_ID || 'meta-llama/llama-2-70b-chat';
 
-// IBM Cloud IAM authentication
-const { IamAuthenticator } = require('ibm-cloud-sdk-core');
-
-// Function to get IAM token for Watsonx.ai
-async function getIamToken() {
-  try {
-    if (!WATSONX_API_KEY) {
-      throw new Error('Missing Watsonx.ai configuration. Please set WATSONX_API_KEY in your .env file');
-    }
-
-    console.log('🔐 Getting IAM token from IBM Cloud...');
-    
-    const authenticator = new IamAuthenticator({
-      apikey: WATSONX_API_KEY,
-    });
-
-    // Get the IAM token
-    const tokenResponse = await authenticator.tokenManager.getToken();
-    const token = tokenResponse.token;
-    
-    console.log('✅ IAM token retrieved successfully');
-    console.log(`   Token type: ${tokenResponse.token_type}`);
-    console.log(`   Expires in: ${tokenResponse.expires_in} seconds`);
-    
-    return token;
-  } catch (error) {
-    console.error('❌ IAM token retrieval failed:', error.message);
-    throw error;
-  }
-}
-
 // Function to call Watsonx.ai LLM
 async function generateTextWithLLM(prompt) {
   try {
@@ -54,8 +23,8 @@ async function generateTextWithLLM(prompt) {
     console.log('🤖 Calling Watsonx.ai LLM...');
     console.log(`   Model: ${WATSONX_MODEL_ID}`);
     console.log(`   Prompt: ${prompt.substring(0, 100)}...`);
+    console.log(`   Project ID: ${WATSONX_PROJECT_ID}`);
 
-    // For Watsonx.ai, use the API key directly in the Authorization header
     const response = await fetch(WATSONX_API_URL, {
       method: 'POST',
       headers: {
@@ -134,7 +103,7 @@ app.get('/health', (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🤖 Watsonx.ai LLM integration: ${WATSONX_API_KEY && WATSONX_PROJECT_ID ? '✅ Configured (Direct API Key)' : '❌ Not configured'}`);
+  console.log(`🤖 Watsonx.ai LLM integration: ${WATSONX_API_KEY && WATSONX_PROJECT_ID ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`📝 Model: ${WATSONX_MODEL_ID}`);
   console.log(`📍 Hello endpoint: http://localhost:${PORT}/hello`);
   console.log(`🏥 Health endpoint: http://localhost:${PORT}/health`);
