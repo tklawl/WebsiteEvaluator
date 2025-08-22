@@ -1,5 +1,4 @@
 export type EvaluationStatus = 'pass' | 'fail' | 'na';
-export type AlignmentLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface EvaluationCriterion {
 	id: string;
@@ -14,35 +13,11 @@ export interface EvaluationResult {
 	name: string;
 	status: EvaluationStatus;
 	notes?: string;
-	// New fields for enhanced evaluation
-	alignment?: AlignmentLevel;
-	reasoning?: string;
-	selectedSections?: string[];
-	contentAnalyzed?: string;
-	definition?: string; // Added: criterion definition from API response
 }
 
 export interface Evaluation {
 	url: string;
 	results: EvaluationResult[];
-}
-
-// New interfaces for multi-website support
-export interface WebsiteEvaluation {
-	criterionId: string;
-	alignment: AlignmentLevel;
-	reasoning: string;
-	selectedSections: string[];
-	contentAnalyzed: string;
-	evaluatedAt: Date;
-}
-
-export interface Website {
-	id: string;
-	url: string;
-	name: string;
-	lastEvaluated?: Date;
-	evaluations: WebsiteEvaluation[];
 }
 
 export const defaultCriteria: EvaluationCriterion[] = [
