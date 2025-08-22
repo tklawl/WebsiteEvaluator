@@ -89,7 +89,7 @@ export function App(): JSX.Element {
 				<a className="brand" href="https://www.dta.gov.au/" target="_blank" rel="noreferrer" aria-label="Digital Transformation Agency">
 					<img src="https://www.dta.gov.au/themes/custom/dta-gov-au/images/dta-wordmark-white.svg?v=4bffd53f" alt="Digital Transformation Agency" />
 				</a>
-				<h1>Website Evaluator</h1>
+				<h1>AI Transparency Statement Evaluator</h1>
 				<p className="muted">Select criteria to assess</p>
 				<CriteriaSidebar />
 				<div className="resizer" onMouseDown={startResizing} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" />

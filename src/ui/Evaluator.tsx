@@ -3,7 +3,6 @@ import { useLocalState } from '../utils/useLocalState';
 import { defaultCriteria, Evaluation, EvaluationCriterion, EvaluationResult, Website, WebsiteEvaluation } from '../utils/model';
 import { evaluateWebsite } from '../utils/api';
 import { scrapeWebsiteSections } from '../utils/scrape';
-import { evaluateWebsiteSections as mockEvaluateWebsiteSections, EvaluationRequest } from '../utils/mockApi';
 
 function normalizeUrl(input: string): string {
 	try {
@@ -39,10 +38,14 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 	const [showDebug, setShowDebug] = useState<boolean>(false);
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [expandedSectionModal, setExpandedSectionModal] = useState<WebsiteSection | null>(null);
+	const [evaluationModal, setEvaluationModal] = useState<any>(null);
 	const [showAllSections, setShowAllSections] = useState<boolean>(false);
 	const [criteriaChanged, setCriteriaChanged] = useState<boolean>(false);
 	const [previousCriteriaHash, setPreviousCriteriaHash] = useState<string>('');
+	const [showPreviousResults, setShowPreviousResults] = useState<boolean>(true);
 	const [showSections, setShowSections] = useState<boolean>(true);
+	const [evaluationAbortController, setEvaluationAbortController] = useState<AbortController | null>(null);
+	const [evaluationProgress, setEvaluationProgress] = useState<string>('');
 
 	// Load existing evaluation results when component mounts or website changes
 	useEffect(() => {
@@ -55,7 +58,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 				alignment: evaluation.alignment,
 				reasoning: evaluation.reasoning,
 				selectedSections: evaluation.selectedSections,
-				contentAnalyzed: evaluation.contentAnalyzed
+				contentAnalysed: evaluation.contentAnalysed,
 			}));
 
 			const existingEvaluation: Evaluation = {
@@ -134,8 +137,9 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 		setEvaluation(null); // Clear previous evaluation results when starting new scrape
 		setCriteriaChanged(false); // Reset criteria changed flag
 		setPreviousCriteriaHash(''); // Reset criteria hash for clean state
+		setShowPreviousResults(true); // Reset previous results visibility
 		setShowSections(true); // Reset sections visibility
-
+		setShowPreviousResults(false); // Reset previous results visibility
 		try {
 			console.log('Calling scrapeWebsiteSections...');
 			const sections = await scrapeWebsiteSections(normalized);
@@ -152,46 +156,72 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 	}
 
 	async function handleEvaluate(): Promise<void> {
-		if (selectedSections.size === 0) return;
+		if (selectedSections.size === 0) {
+			alert('Please select at least one section to evaluate.');
+			return;
+		}
 
-		const normalized = normalizeUrl(urlInput);
+		const selected = criteria.filter(c => c.selected);
+		if (selected.length === 0) {
+			alert('Please select at least one evaluation criterion.');
+			return;
+		}
+
+		// Create abort controller for cancellation
+		const abortController = new AbortController();
+		setEvaluationAbortController(abortController);
 		setIsEvaluating(true);
-		setCriteriaChanged(false); // Reset the flag when starting new evaluation
+		setEvaluationProgress('Preparing evaluation...');
 
 		try {
-			const selected: EvaluationCriterion[] = (criteria || []).filter(c => !!c.selected);
-			if (selected.length === 0) {
-				setEvaluation({ url: normalized, results: [] });
-				return;
-			}
-
-			// Get the selected section data for the API request
-			const selectedSectionData = websiteSections
-				.filter(section => selectedSections.has(section.selector))
-				.map(section => ({
-					selector: section.selector,
-					title: section.title,
-					content: section.fullText
-				}));
-
-			console.log('📤 Preparing API request with:', {
-				websiteUrl: normalized,
-				selectedSections: selectedSectionData,
-				criteria: selected
+			const normalized = normalizeUrl(currentUrl);
+			
+			// Prepare selected sections data
+			const selectedSectionData = Array.from(selectedSections).map(selector => {
+				const section = websiteSections.find(s => s.selector === selector);
+				return {
+					selector: selector,
+					title: section?.title || 'Unknown Section',
+					content: section?.fullText || section?.text || ''
+				};
 			});
 
 			// Create the API request
-			const apiRequest: EvaluationRequest = {
+			const apiRequest = {
 				websiteUrl: normalized,
 				selectedSections: selectedSectionData,
 				criteria: selected
 			};
 
-			// Call the mock API endpoint
-			const apiResponse = await mockEvaluateWebsiteSections(apiRequest);
+			console.log('🚀 Sending evaluation request to API:', apiRequest);
+			setEvaluationProgress('Sending request to AI service...');
+
+			// Call the real API endpoint
+			const response = await fetch('http://localhost:3001/evaluate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(apiRequest),
+				signal: abortController.signal
+			});
+
+			if (!response.ok) {
+				throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+			}
+
+			setEvaluationProgress('Processing AI analysis...');
+			const apiResponse = await response.json();
+			console.log('✅ API Response received:', apiResponse);
+			console.log('📊 Evaluation Summary:', apiResponse.evaluationSummary);
+			console.log('📝 Results Count:', apiResponse.results?.length);
 
 			// Set the evaluation results from the API response
-			setEvaluation({ url: normalized, results: apiResponse.results });
+			setEvaluation({ 
+				url: normalized, 
+				results: apiResponse.results,
+				evaluationSummary: apiResponse.evaluationSummary
+			} as any);
 			
 			// Update the criteria hash after successful evaluation
 			const currentCriteriaHash = criteria
@@ -202,12 +232,12 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			setPreviousCriteriaHash(currentCriteriaHash);
 
 			// Save the evaluation results to the website
-			const websiteEvaluations: WebsiteEvaluation[] = apiResponse.results.map((result) => ({
+			const websiteEvaluations: WebsiteEvaluation[] = apiResponse.results.map((result: any) => ({
 				criterionId: result.criterionId,
 				alignment: result.alignment || 'HIGH',
 				reasoning: result.reasoning || '',
 				selectedSections: result.selectedSections || [],
-				contentAnalyzed: result.contentAnalyzed || '',
+				contentAnalysed: result.contentAnalysed || '',
 				evaluatedAt: new Date()
 			}));
 
@@ -222,11 +252,18 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			onWebsiteUpdated(updatedWebsite);
 
 		} catch (error) {
-			console.error('Failed to evaluate website:', error);
-			// Show error message to user
-			alert('Evaluation failed. Please try again.');
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.log('Evaluation was cancelled by user');
+				// Don't show error alert for cancellation
+			} else {
+				console.error('Failed to evaluate website:', error);
+				// Show error message to user
+				alert('Evaluation failed. Please try again.');
+			}
 		} finally {
 			setIsEvaluating(false);
+			setEvaluationAbortController(null);
+			setEvaluationProgress('');
 		}
 	}
 
@@ -248,6 +285,20 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 		setExpandedSectionModal(null);
 	}
 
+	function openEvaluationModal(evaluation: any): void {
+		setEvaluationModal(evaluation);
+	}
+
+	function closeEvaluationModal(): void {
+		setEvaluationModal(null);
+	}
+
+	function cancelEvaluation(): void {
+		if (evaluationAbortController) {
+			evaluationAbortController.abort();
+		}
+	}
+
 	// Get full text for a section (this would need to be stored in the section data)
 	function getFullText(section: WebsiteSection): string {
 		return section.fullText || section.text;
@@ -259,6 +310,28 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 
 	return (
 		<>
+			{/* Full-screen loading overlay */}
+			{isEvaluating && (
+				<div className="evaluation-loading-overlay">
+					<div className="evaluation-loading-content">
+						<div className="loading-spinner"></div>
+						<h3>Evaluating Website Sections</h3>
+						<p>This may take a few moments as we analyze your content with AI...</p>
+						{evaluationProgress && (
+							<div className="evaluation-progress">
+								<p>{evaluationProgress}</p>
+							</div>
+						)}
+						<button 
+							className="button danger" 
+							onClick={cancelEvaluation}
+						>
+							Cancel Evaluation
+						</button>
+					</div>
+				</div>
+			)}
+
 			<section className="topbar panel">
 				<form className="url-input" onSubmit={(e) => { e.preventDefault(); handleScrape(); }}>
 					<input
@@ -269,7 +342,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 						aria-label="Website URL"
 					/>
 					<button 
-						className="button" 
+						className="button primary" 
 						type="submit" 
 						disabled={isScraping}
 					>
@@ -316,51 +389,57 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 						<h3 style={{margin: '4px 0 12px'}}>Previous Evaluation Results</h3>
 						<button
 							className="toggle-button"
-							onClick={() => setShowSections(!showSections)}
-							title={showSections ? 'Hide Previous Results' : 'Show Previous Results'}
+							onClick={() => setShowPreviousResults(!showPreviousResults)}
+							title={showPreviousResults ? 'Hide Previous Results' : 'Show Previous Results'}
 						>
-							{showSections ? '−' : '+'}
+							{showPreviousResults ? '−' : '+'}
 						</button>
 					</div>
-					{showSections && (
+					{showPreviousResults && (
 						<>
 							<p className="muted">
 								This website was previously evaluated on {new Date(website.lastEvaluated || Date.now()).toLocaleDateString()}. 
 								You can view the results below or re-evaluate with new sections.
 							</p>
-							<div className="summary">
+							<div className="evaluation-results-grid">
 								{website.evaluations.map((evaluation) => {
 									const criterion = criteria.find(c => c.id === evaluation.criterionId);
 									return (
-										<div className="summary-item" key={evaluation.criterionId}>
-											<div className="summary-header">
+										<div 
+											className="evaluation-result-card" 
+											key={evaluation.criterionId}
+											onClick={() => openEvaluationModal({
+												...evaluation,
+												name: criterion?.name || 'Unknown Criterion',
+												definition: criterion?.definition || ''
+											})}
+										>
+											<div className="result-header">
 												<strong>{criterion?.name || 'Unknown Criterion'}</strong>
-												<span className={`tag alignment-${evaluation.alignment.toLowerCase()}`}>
-													{evaluation.alignment}
-												</span>
+												<div className="result-status">
+													{evaluation.alignment && (
+														<span className={`tag alignment-${evaluation.alignment.toLowerCase()}`}>
+															{evaluation.alignment}
+														</span>
+													)}
+												</div>
 											</div>
 											{evaluation.reasoning && (
-												<div className="summary-reasoning">
-													<p>{evaluation.reasoning}</p>
+												<div className="result-preview">
+													<p>{evaluation.reasoning.split(' ').slice(0, 30).join(' ')}...</p>
 												</div>
 											)}
 											{evaluation.selectedSections && evaluation.selectedSections.length > 0 && (
-												<div className="summary-sections">
-													<small><strong>Previously analysed sections:</strong> {evaluation.selectedSections.join(', ')}</small>
+												<div className="result-sections">
+													<small><strong>Sections:</strong> {evaluation.selectedSections.length} analysed</small>
 												</div>
 											)}
+											<div className="result-click-hint">
+												<small>Click to view details</small>
+											</div>
 										</div>
 									);
 								})}
-							</div>
-							<div className="evaluate-actions">
-								<button 
-									className="button primary" 
-									onClick={handleScrape}
-									disabled={isScraping}
-								>
-									{isScraping ? 'Scraping...' : 'Re-evaluate Website'}
-								</button>
 							</div>
 						</>
 					)}
@@ -529,32 +608,65 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 						</div>
 					)}
 
-					<div className="summary">
-						{evaluation.results.map((r: any) => (
-							<div className="summary-item" key={r.criterionId}>
-								<div className="summary-header">
-									<strong>{r.name}</strong>
-									{r.alignment && (
-										<span className={`tag alignment-${r.alignment.toLowerCase()}`}>
-											{r.alignment}
-										</span>
-									)}
+					{/* Show evaluation summary if available */}
+					{(evaluation as any).evaluationSummary && (
+						<div className="evaluation-summary">
+							<div className="summary-stats">
+								<div className="stat-item">
+									<strong>{(evaluation as any).evaluationSummary.totalCriteria}</strong>
+									<small>Total Criteria</small>
 								</div>
-								{r.definition && (
-									<div className="summary-definition">
-										<small><strong>Definition:</strong> {r.definition}</small>
+								<div className="stat-item">
+									<strong>{(evaluation as any).evaluationSummary.completedEvaluations}</strong>
+									<small>Completed</small>
+								</div>
+								<div className="stat-item">
+									<strong>{(evaluation as any).evaluationSummary.failedEvaluations}</strong>
+									<small>Failed</small>
+								</div>
+								<div className="stat-item">
+									<strong>{(evaluation as any).evaluationSummary.averageAlignment?.toFixed(1) || 'N/A'}</strong>
+									<small>Avg Alignment</small>
+								</div>
+							</div>
+						</div>
+					)}
+
+					<div className="evaluation-results-grid">
+						{evaluation.results.map((r: any) => (
+							<div 
+								className="evaluation-result-card" 
+								key={r.criterionId}
+								onClick={() => openEvaluationModal(r)}
+							>
+								<div className="result-header">
+									<strong>{r.name}</strong>
+									<div className="result-status">
+										{r.alignment && (
+											<span className={`tag alignment-${r.alignment.toLowerCase()}`}>
+												{r.alignment}
+											</span>
+										)}
+										{r.status && (
+											<span className={`tag status-${r.status}`}>
+												{r.status}
+											</span>
+										)}
 									</div>
-								)}
+								</div>
 								{r.reasoning && (
-									<div className="summary-reasoning">
-										<p>{r.reasoning}</p>
+									<div className="result-preview">
+										<p>{r.reasoning.split(' ').slice(0, 30).join(' ')}...</p>
 									</div>
 								)}
 								{r.selectedSections && r.selectedSections.length > 0 && (
-									<div className="summary-sections">
-										<small><strong>Sections analyzed:</strong> {r.selectedSections.join(', ')}</small>
+									<div className="result-sections">
+										<small><strong>Sections:</strong> {r.selectedSections.length} analysed</small>
 									</div>
 								)}
+								<div className="result-click-hint">
+									<small>Click to view details</small>
+								</div>
 							</div>
 						))}
 					</div>
@@ -621,6 +733,68 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 									paragraph.trim() && <p key={index}>{paragraph.trim()}</p>
 								))}
 							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Evaluation Result Modal */}
+			{evaluationModal && (
+				<div className="evaluation-modal" onClick={closeEvaluationModal}>
+					<div className="evaluation-modal-content" onClick={(e) => e.stopPropagation()}>
+						<div className="evaluation-modal-header">
+							<h2>{evaluationModal.name}</h2>
+							<button className="evaluation-modal-close" onClick={closeEvaluationModal}>×</button>
+						</div>
+						<div className="evaluation-modal-body">
+							<div className="evaluation-modal-status">
+								{evaluationModal.alignment && (
+									<span className={`tag alignment-${evaluationModal.alignment.toLowerCase()}`}>
+										{evaluationModal.alignment}
+									</span>
+								)}
+								{evaluationModal.status && (
+									<span className={`tag status-${evaluationModal.status}`}>
+										{evaluationModal.status}
+									</span>
+								)}
+							</div>
+							
+							{evaluationModal.reasoning && (
+								<div className="evaluation-modal-section">
+									<h4>Detailed Analysis</h4>
+									<p>{evaluationModal.reasoning}</p>
+								</div>
+							)}
+							
+							{evaluationModal.keyInsights && evaluationModal.keyInsights.length > 0 && (
+								<div className="evaluation-modal-section">
+									<h4>Key Insights</h4>
+									<ul>
+										{evaluationModal.keyInsights.map((insight: string, index: number) => (
+											<li key={index}>{insight}</li>
+										))}
+									</ul>
+								</div>
+							)}
+							
+							{evaluationModal.selectedSections && evaluationModal.selectedSections.length > 0 && (
+								<div className="evaluation-modal-section">
+									<h4>Sections Analysed</h4>
+									<ul>
+										{evaluationModal.selectedSections.map((section: string, index: number) => (
+											<li key={index}>{section}</li>
+										))}
+									</ul>
+								</div>
+							)}
+							
+							{evaluationModal.evaluatedAt && (
+								<div className="evaluation-modal-section">
+									<h4>Evaluation Details</h4>
+									<p><strong>Evaluated:</strong> {new Date(evaluationModal.evaluatedAt).toLocaleString()}</p>
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

@@ -15,6 +15,8 @@ export function HomePage(): JSX.Element {
 	const [criteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', []);
 	const [showAddForm, setShowAddForm] = useState<boolean>(false);
 	const [newWebsite, setNewWebsite] = useState<{ url: string; name: string }>({ url: '', name: '' });
+	const [llmResponse, setLlmResponse] = useState<any>(null);
+	const [isCallingLlm, setIsCallingLlm] = useState<boolean>(false);
 
 	function addWebsite(): void {
 		if (!newWebsite.url.trim() || !newWebsite.name.trim()) return;
@@ -58,6 +60,24 @@ export function HomePage(): JSX.Element {
 		localStorage.setItem('selectedWebsiteId', websiteId);
 		// Trigger navigation by updating a shared state
 		window.dispatchEvent(new CustomEvent('navigate-to-evaluator', { detail: { websiteId } }));
+	}
+
+	async function callHelloEndpoint(): Promise<void> {
+		setIsCallingLlm(true);
+		try {
+			const response = await fetch('http://localhost:3001/hello');
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+			const data = await response.json();
+			setLlmResponse(data);
+		} catch (error) {
+			console.error('Failed to call hello endpoint:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			setLlmResponse({ error: errorMessage });
+		} finally {
+			setIsCallingLlm(false);
+		}
 	}
 
 	return (
