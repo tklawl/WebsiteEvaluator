@@ -17,6 +17,7 @@ interface WebsiteSection {
 	selector: string;
 	text: string;
 	title: string;
+	fullText: string;
 }
 
 export function Evaluator(): JSX.Element {
@@ -28,6 +29,11 @@ export function Evaluator(): JSX.Element {
 	const [websiteSections, setWebsiteSections] = useState<WebsiteSection[]>([]);
 	const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
 	const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+	const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+	const [showDebug, setShowDebug] = useState<boolean>(false);
+	const [showPreview, setShowPreview] = useState<boolean>(false);
+	const [expandedSectionModal, setExpandedSectionModal] = useState<WebsiteSection | null>(null);
+	const [showAllSections, setShowAllSections] = useState<boolean>(false);
 
 	console.log('Evaluator component rendering, websiteSections:', websiteSections.length, 'isScraping:', isScraping);
 
@@ -48,6 +54,9 @@ export function Evaluator(): JSX.Element {
 		setIsScraping(true);
 		setWebsiteSections([]);
 		setSelectedSections(new Set());
+		setExpandedSections(new Set());
+		setExpandedSectionModal(null);
+		setShowAllSections(false);
 		setEvaluation(null);
 
 		try {
@@ -81,7 +90,7 @@ export function Evaluator(): JSX.Element {
 			// Get the selected section texts
 			const selectedSectionTexts = websiteSections
 				.filter(section => selectedSections.has(section.selector))
-				.map(section => section.text)
+				.map(section => section.fullText)
 				.join('\n\n');
 
 			// Evaluate the selected sections
@@ -118,6 +127,23 @@ export function Evaluator(): JSX.Element {
 		setSelectedSections(newSelected);
 	}
 
+	function openSectionModal(section: WebsiteSection): void {
+		setExpandedSectionModal(section);
+	}
+
+	function closeSectionModal(): void {
+		setExpandedSectionModal(null);
+	}
+
+	// Get full text for a section (this would need to be stored in the section data)
+	function getFullText(section: WebsiteSection): string {
+		return section.fullText || section.text;
+	}
+
+	// Get sections to display (first 6 or all)
+	const displayedSections = showAllSections ? websiteSections : websiteSections.slice(0, 6);
+	const hasMoreSections = websiteSections.length > 6;
+
 	return (
 		<>
 			<section className="topbar panel">
@@ -137,16 +163,43 @@ export function Evaluator(): JSX.Element {
 						{isScraping ? 'Scraping...' : 'Scrape'}
 					</button>
 				</form>
-				<button 
-					className="button ghost" 
-					onClick={() => {
-						setUrlInput('https://test.example.com');
-						setTimeout(() => handleScrape(), 100);
-					}}
-					style={{ marginLeft: '8px' }}
-				>
-					Test Scraping
-				</button>
+			</section>
+
+			<section className="panel">
+				<div className="section-header-toggle">
+					<h3 style={{margin: '4px 0 12px'}}>Website Preview</h3>
+					<button
+						className="toggle-button"
+						onClick={() => setShowPreview(!showPreview)}
+						title={showPreview ? 'Hide Preview' : 'Show Preview'}
+					>
+						{showPreview ? '−' : '+'}
+					</button>
+				</div>
+				{showPreview ? (
+					<>
+						<iframe 
+							className="preview" 
+							src={currentUrl} 
+							title="Website preview" 
+							sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+							onError={() => console.log('Iframe failed to load')}
+						/>
+						<p className="muted">
+							If the site blocks embedding (like YouTube, Google, etc.), open in a new tab: 
+							<a href={currentUrl} target="_blank" rel="noreferrer">{currentUrl}</a>
+						</p>
+						<p className="muted" style={{color: '#666', fontSize: '11px'}}>
+							Note: Iframe preview issues don't affect scraping functionality
+						</p>
+					</>
+				) : (
+					<div className="preview-collapsed">
+						<p className="muted">
+							Preview hidden. <a href={currentUrl} target="_blank" rel="noreferrer">Open {currentUrl}</a> in a new tab to view the website.
+						</p>
+					</div>
+				)}
 			</section>
 
 			{websiteSections.length > 0 && (
@@ -154,7 +207,7 @@ export function Evaluator(): JSX.Element {
 					<h3 style={{margin: '4px 0 12px'}}>Website Sections</h3>
 					<p className="muted">Select one or more sections to evaluate:</p>
 					<div className="sections-grid">
-						{websiteSections.map((section) => (
+						{displayedSections.map((section) => (
 							<div 
 								key={section.selector} 
 								className={`section-card ${selectedSections.has(section.selector) ? 'selected' : ''}`}
@@ -168,12 +221,49 @@ export function Evaluator(): JSX.Element {
 										onClick={(e) => e.stopPropagation()}
 									/>
 									<h4>{section.title}</h4>
+									<button
+										className="expand-button"
+										onClick={(e) => {
+											e.stopPropagation();
+											openSectionModal(section);
+										}}
+										title="View Full Content"
+									>
+										👁️
+									</button>
 								</div>
-								<p className="section-text">{section.text}</p>
+								<div className="section-content">
+									<p className="section-text">
+										{section.text}
+									</p>
+									{section.text.length > 200 && (
+										<button
+											className="expand-text-button"
+											onClick={(e) => {
+												e.stopPropagation();
+												openSectionModal(section);
+											}}
+										>
+											Read Full Content
+										</button>
+									)}
+								</div>
 								<small className="section-selector">{section.selector}</small>
 							</div>
 						))}
 					</div>
+					
+					{hasMoreSections && (
+						<div className="sections-expand">
+							<button 
+								className="button ghost" 
+								onClick={() => setShowAllSections(!showAllSections)}
+							>
+								{showAllSections ? `Show Less (${6})` : `Show More (${websiteSections.length - 6})`}
+							</button>
+						</div>
+					)}
+					
 					{selectedSections.size > 0 && (
 						<div className="evaluate-actions">
 							<button 
@@ -214,43 +304,6 @@ export function Evaluator(): JSX.Element {
 				</section>
 			)}
 
-			{/* Debug info - remove this in production */}
-			<section className="panel" style={{background: '#f0f8ff', border: '1px solid #ccc'}}>
-				<h3 style={{margin: '4px 0 12px'}}>Debug Info</h3>
-				<p><strong>Is Scraping:</strong> {isScraping ? 'Yes' : 'No'}</p>
-				<p><strong>Sections Found:</strong> {websiteSections.length}</p>
-				<p><strong>Selected Sections:</strong> {selectedSections.size}</p>
-				<p><strong>Current URL:</strong> {currentUrl}</p>
-				{websiteSections.length > 0 && (
-					<div>
-						<p><strong>Section Titles:</strong></p>
-						<ul>
-							{websiteSections.map((section, index) => (
-								<li key={index}>{section.title} ({section.selector})</li>
-							))}
-						</ul>
-					</div>
-				)}
-			</section>
-
-			<section className="panel">
-				<h3 style={{margin: '4px 0 12px'}}>Website Preview</h3>
-				<iframe 
-					className="preview" 
-					src={currentUrl} 
-					title="Website preview" 
-					sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-					onError={() => console.log('Iframe failed to load')}
-				/>
-				<p className="muted">
-					If the site blocks embedding (like YouTube, Google, etc.), open in a new tab: 
-					<a href={currentUrl} target="_blank" rel="noreferrer">{currentUrl}</a>
-				</p>
-				<p className="muted" style={{color: '#666', fontSize: '11px'}}>
-					Note: Iframe preview issues don't affect scraping functionality
-				</p>
-			</section>
-
 			{evaluation && (
 				<section className="panel">
 					<h3 style={{margin: '4px 0 12px'}}>Evaluation Results</h3>
@@ -264,6 +317,61 @@ export function Evaluator(): JSX.Element {
 						))}
 					</div>
 				</section>
+			)}
+
+			{/* Floating Debug Icon */}
+			<div className="debug-icon" onClick={() => setShowDebug(!showDebug)} title="Debug Info">
+				🐛
+			</div>
+
+			{/* Debug Modal */}
+			{showDebug && (
+				<div className="debug-modal" onClick={() => setShowDebug(false)}>
+					<div className="debug-content" onClick={(e) => e.stopPropagation()}>
+						<div className="debug-header">
+							<h3>Debug Information</h3>
+							<button className="debug-close" onClick={() => setShowDebug(false)}>×</button>
+						</div>
+						<div className="debug-body">
+							<p><strong>Is Scraping:</strong> {isScraping ? 'Yes' : 'No'}</p>
+							<p><strong>Sections Found:</strong> {websiteSections.length}</p>
+							<p><strong>Selected Sections:</strong> {selectedSections.size}</p>
+							<p><strong>Current URL:</strong> {currentUrl}</p>
+							{websiteSections.length > 0 && (
+								<div>
+									<p><strong>Section Titles:</strong></p>
+									<ul>
+										{websiteSections.map((section, index) => (
+											<li key={index}>{section.title} ({section.selector})</li>
+										))}
+									</ul>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Section Content Modal */}
+			{expandedSectionModal && (
+				<div className="section-modal" onClick={closeSectionModal}>
+					<div className="section-modal-content" onClick={(e) => e.stopPropagation()}>
+						<div className="section-modal-header">
+							<h2>{expandedSectionModal.title}</h2>
+							<button className="section-modal-close" onClick={closeSectionModal}>×</button>
+						</div>
+						<div className="section-modal-body">
+							<div className="section-modal-info">
+								<p><strong>Selector:</strong> <code>{expandedSectionModal.selector}</code></p>
+							</div>
+							<div className="section-modal-text">
+								{expandedSectionModal.fullText.split('\n').map((paragraph, index) => (
+									paragraph.trim() && <p key={index}>{paragraph.trim()}</p>
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
 			)}
 		</>
 	);

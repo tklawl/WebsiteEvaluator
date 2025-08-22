@@ -108,7 +108,7 @@ export async function fetchPageHtml(url: string): Promise<string> {
 	return '';
 }
 
-export async function scrapeWebsiteSections(url: string): Promise<Array<{selector: string, text: string, title: string}>> {
+export async function scrapeWebsiteSections(url: string): Promise<Array<{selector: string, text: string, title: string, fullText: string}>> {
 	console.log('Starting to scrape website sections for:', url);
 	
 	// For testing purposes, return mock data if URL contains 'test'
@@ -118,22 +118,26 @@ export async function scrapeWebsiteSections(url: string): Promise<Array<{selecto
 			{
 				selector: 'header',
 				text: 'This is a test header section with navigation and branding information.',
-				title: 'Header'
+				title: 'Header',
+				fullText: 'This is a test header section with navigation and branding information. It contains the main navigation menu, logo, and site branding elements that users see at the top of every page.'
 			},
 			{
 				selector: 'main',
 				text: 'This is the main content area containing the primary information and articles for the website.',
-				title: 'Main Content'
+				title: 'Main Content',
+				fullText: 'This is the main content area containing the primary information and articles for the website. This section typically includes the most important content that users come to the site to read, such as blog posts, articles, product information, or other primary content.'
 			},
 			{
 				selector: 'aside',
 				text: 'Sidebar content with additional links, related information, and supplementary content.',
-				title: 'Sidebar'
+				title: 'Sidebar',
+				fullText: 'Sidebar content with additional links, related information, and supplementary content. This area often contains navigation menus, related articles, advertisements, social media links, or other secondary content that complements the main content.'
 			},
 			{
 				selector: 'footer',
 				text: 'Footer section with contact information, links, and copyright details.',
-				title: 'Footer'
+				title: 'Footer',
+				fullText: 'Footer section with contact information, links, and copyright details. This area typically contains links to important pages like About Us, Contact, Privacy Policy, Terms of Service, social media links, and copyright information.'
 			}
 		];
 	}
@@ -165,7 +169,7 @@ export async function scrapeWebsiteSections(url: string): Promise<Array<{selecto
 				body: JSON.stringify({ url }),
 			});
 			if (res.ok) {
-				const data = await res.json() as Array<{selector: string, text: string, title: string}>;
+				const data = await res.json() as Array<{selector: string, text: string, title: string, fullText: string}>;
 				console.log('API returned sections:', data);
 				return data;
 			}
@@ -202,18 +206,19 @@ export async function scrapeWebsiteSections(url: string): Promise<Array<{selecto
 		return [{
 			selector: 'body',
 			text: 'Unable to scrape website content. This might be due to CORS restrictions or the website blocking external access.',
-			title: 'Scraping Failed'
+			title: 'Scraping Failed',
+			fullText: 'Unable to scrape website content. This might be due to CORS restrictions or the website blocking external access. The website may have security measures in place that prevent external tools from accessing its content.'
 		}];
 	}
 
 	return processHtml(html);
 }
 
-function processHtml(html: string): Array<{selector: string, text: string, title: string}> {
+function processHtml(html: string): Array<{selector: string, text: string, title: string, fullText: string}> {
 	console.log('Processing HTML with length:', html.length);
 	
 	const doc = new DOMParser().parseFromString(html, 'text/html');
-	const sections: Array<{selector: string, text: string, title: string}> = [];
+	const sections: Array<{selector: string, text: string, title: string, fullText: string}> = [];
 
 	// Common section selectors
 	const sectionSelectors = [
@@ -236,10 +241,14 @@ function processHtml(html: string): Array<{selector: string, text: string, title
 							el.getAttribute('title') || 
 							`${selector} ${index + 1}`;
 				
+				const fullText = normalizeWhitespace(el.textContent);
+				const truncatedText = fullText.length > 200 ? fullText.substring(0, 200) + '...' : fullText;
+				
 				sections.push({
 					selector: `${selector}:nth-of-type(${index + 1})`,
-					text: normalizeWhitespace(el.textContent),
-					title: title
+					text: truncatedText,
+					title: title,
+					fullText: fullText
 				});
 			}
 		});
@@ -247,13 +256,10 @@ function processHtml(html: string): Array<{selector: string, text: string, title
 
 	console.log('Total sections found before deduplication:', sections.length);
 
-	// Remove duplicates and limit text length
+	// Remove duplicates and limit to 10 sections
 	const uniqueSections = sections.filter((section, index, self) => 
 		index === self.findIndex(s => s.title === section.title)
-	).map(section => ({
-		...section,
-		text: section.text.length > 200 ? section.text.substring(0, 200) + '...' : section.text
-	}));
+	);
 
 	console.log('Final unique sections:', uniqueSections);
 	return uniqueSections.slice(0, 10); // Limit to 10 sections

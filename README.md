@@ -4,18 +4,21 @@ A tool for evaluating websites against accessibility and usability criteria.
 
 ## How It Works
 
-### New Workflow (Updated)
+### Workflow
 
 1. **Enter Website URL**: Input the website URL you want to evaluate
 2. **Scrape Website**: Click the "Scrape" button to analyze the website and extract all available sections
-3. **Select Sections**: Review the scraped sections and select one or more that you want to evaluate
-4. **Evaluate**: Click "Evaluate Selected Sections" to send the chosen sections through the API for evaluation
-5. **View Results**: See the evaluation results for each selected criterion
+3. **Review Sections**: Browse through the first 6 sections (click "Show More" to see all)
+4. **Select Sections**: Choose one or more sections that you want to evaluate
+5. **Evaluate**: Click "Evaluate Selected Sections" to send the chosen sections through the API for evaluation
+6. **View Results**: See the evaluation results for each selected criterion
 
 ### Features
 
 - **Smart Section Detection**: Automatically identifies main content areas, headers, navigation, and other important sections
+- **Section Pagination**: Shows first 6 sections by default with option to expand to see all
 - **Multi-Section Selection**: Choose multiple sections to evaluate together
+- **Content Preview**: Click the eye icon to view full content in a large modal
 - **Real-time Preview**: See a live preview of the website being evaluated
 - **Criteria-based Evaluation**: Evaluate against customizable accessibility and usability criteria
 - **API Integration**: Supports both local scraping and external API endpoints
@@ -27,6 +30,7 @@ The application uses:
 - **CSS selector detection** to identify meaningful content sections
 - **Text extraction** with intelligent length limiting
 - **Duplicate removal** to avoid redundant evaluations
+- **Content pagination** to manage large numbers of sections
 
 ### Development
 
