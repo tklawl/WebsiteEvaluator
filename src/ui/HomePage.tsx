@@ -55,6 +55,47 @@ export function HomePage(): JSX.Element {
 		}
 	}
 
+	function calculateAverageScore(website: Website): number {
+		if (!website.evaluations || website.evaluations.length === 0) {
+			return 0;
+		}
+
+		const scores = { 'HIGH': 100, 'MEDIUM': 66, 'LOW': 33 };
+		const totalScore = website.evaluations.reduce((acc, evaluation) => {
+			return acc + (scores[evaluation.alignment as keyof typeof scores] || 0);
+		}, 0);
+
+		return totalScore / website.evaluations.length;
+	}
+
+	function getRowBackgroundColor(website: Website): string {
+		const averageScore = calculateAverageScore(website);
+		
+		if (averageScore === 0) {
+			return 'transparent'; // No evaluations
+		} else if (averageScore >= 83) {
+			return 'rgba(28, 122, 67, 0.1)'; // High compliance - light green
+		} else if (averageScore >= 50) {
+			return 'rgba(133, 100, 4, 0.1)'; // Medium compliance - light yellow
+		} else {
+			return 'rgba(114, 28, 36, 0.1)'; // Low compliance - light red
+		}
+	}
+
+	function getRowBorderColor(website: Website): string {
+		const averageScore = calculateAverageScore(website);
+		
+		if (averageScore === 0) {
+			return 'var(--border)'; // No evaluations
+		} else if (averageScore >= 83) {
+			return '#1c7a43'; // High compliance - green border
+		} else if (averageScore >= 50) {
+			return '#856404'; // Medium compliance - yellow border
+		} else {
+			return '#721c24'; // Low compliance - red border
+		}
+	}
+
 	function navigateToEvaluator(websiteId: string): void {
 		// Store the selected website ID and navigate
 		localStorage.setItem('selectedWebsiteId', websiteId);
@@ -83,7 +124,7 @@ export function HomePage(): JSX.Element {
 	return (
 		<div className="homepage">
 			<header className="homepage-header">
-				<h1>Website Evaluator Dashboard</h1>
+				<h1>AI Transparency Statement Evaluator Dashboard</h1>
 				<p className="muted">Manage and evaluate multiple websites against your criteria</p>
 			</header>
 
@@ -129,6 +170,22 @@ export function HomePage(): JSX.Element {
 			)}
 
 			<section className="websites-table-container">
+				{websites.length > 0 && (
+					<div className="color-legend">
+						<div className="legend-item">
+							<div className="legend-color high"></div>
+							<span>High Compliance (≥83%)</span>
+						</div>
+						<div className="legend-item">
+							<div className="legend-color medium"></div>
+							<span>Medium Compliance (50-82%)</span>
+						</div>
+						<div className="legend-item">
+							<div className="legend-color low"></div>
+							<span>Low Compliance (&lt;50%)</span>
+						</div>
+					</div>
+				)}
 				{websites.length === 0 ? (
 					<div className="empty-state panel">
 						<h3>No Websites Added</h3>
@@ -153,10 +210,24 @@ export function HomePage(): JSX.Element {
 							</thead>
 							<tbody>
 								{websites.map(website => (
-									<tr key={website.id}>
+									<tr 
+										key={website.id}
+										className="website-row"
+										style={{
+											backgroundColor: getRowBackgroundColor(website),
+											borderLeft: `3px solid ${getRowBorderColor(website)}`
+										}}
+									>
 										<td className="website-cell" onClick={() => navigateToEvaluator(website.id)}>
 											<div className="website-info">
-												<strong>{website.name}</strong>
+												<div className="website-header">
+													<strong>{website.name}</strong>
+													{website.evaluations && website.evaluations.length > 0 && (
+														<span className="average-score">
+															{Math.round(calculateAverageScore(website))}%
+														</span>
+													)}
+												</div>
 												<small>{website.url}</small>
 												{website.lastEvaluated && (
 													<small className="last-evaluated">

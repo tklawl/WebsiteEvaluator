@@ -1784,3 +1784,89 @@ a { color: var(--accent-strong); }
   font-size: 14px;
 }
 
+/* Website Row Color Coding */
+.website-row {
+  transition: all 0.2s ease;
+}
+
+.website-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.website-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.average-score {
+  background: var(--accent);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 45px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  line-height: 1.2;
+}
+
+/* Row color variations */
+.website-row[style*="rgba(28, 122, 67, 0.1)"] .average-score {
+  background: #1c7a43;
+}
+
+.website-row[style*="rgba(133, 100, 4, 0.1)"] .average-score {
+  background: #856404;
+}
+
+.website-row[style*="rgba(114, 28, 36, 0.1)"] .average-score {
+  background: #721c24;
+}
+
+/* Color Legend */
+.color-legend {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.legend-color.high {
+  background: rgba(28, 122, 67, 0.1);
+  border-left: 3px solid #1c7a43;
+}
+
+.legend-color.medium {
+  background: rgba(133, 100, 4, 0.1);
+  border-left: 3px solid #856404;
+}
+
+.legend-color.low {
+  background: rgba(114, 28, 36, 0.1);
+  border-left: 3px solid #721c24;
+}
+

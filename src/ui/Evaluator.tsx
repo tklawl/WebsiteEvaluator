@@ -673,49 +673,6 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 				</section>
 			)}
 
-			{/* Floating Debug Icon */}
-			<div className="debug-icon" onClick={() => setShowDebug(!showDebug)} title="Debug Info">
-				🐛
-			</div>
-
-			{/* Debug Test Button */}
-			<div className="debug-test-button" onClick={() => {
-				console.log('=== MANUAL DEBUG TEST ===');
-				console.log('Current criteria in Evaluator:', criteria);
-				console.log('Selected criteria:', criteria.filter(c => c.selected));
-				console.log('LocalStorage value:', localStorage.getItem('criteria:v1'));
-			}} title="Test State Sync">
-				🧪
-			</div>
-
-			{/* Debug Modal */}
-			{showDebug && (
-				<div className="debug-modal" onClick={() => setShowDebug(false)}>
-					<div className="debug-content" onClick={(e) => e.stopPropagation()}>
-						<div className="debug-header">
-							<h3>Debug Information</h3>
-							<button className="debug-close" onClick={() => setShowDebug(false)}>×</button>
-						</div>
-						<div className="debug-body">
-							<p><strong>Is Scraping:</strong> {isScraping ? 'Yes' : 'No'}</p>
-							<p><strong>Sections Found:</strong> {websiteSections.length}</p>
-							<p><strong>Selected Sections:</strong> {selectedSections.size}</p>
-							<p><strong>Current URL:</strong> {currentUrl}</p>
-							{websiteSections.length > 0 && (
-								<div>
-									<p><strong>Section Titles:</strong></p>
-									<ul>
-										{websiteSections.map((section, index) => (
-											<li key={index}>{section.title} ({section.selector})</li>
-										))}
-									</ul>
-								</div>
-							)}
-						</div>
-					</div>
-				</div>
-			)}
-
 			{/* Section Content Modal */}
 			{expandedSectionModal && (
 				<div className="section-modal" onClick={closeSectionModal}>
