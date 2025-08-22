@@ -1,4 +1,5 @@
 export type EvaluationStatus = 'pass' | 'fail' | 'na';
+export type AlignmentLevel = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface EvaluationCriterion {
 	id: string;
@@ -13,6 +14,11 @@ export interface EvaluationResult {
 	name: string;
 	status: EvaluationStatus;
 	notes?: string;
+	// New fields for enhanced evaluation
+	alignment?: AlignmentLevel;
+	reasoning?: string;
+	selectedSections?: string[];
+	contentAnalyzed?: string;
 }
 
 export interface Evaluation {

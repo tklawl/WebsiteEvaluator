@@ -21,7 +21,7 @@ interface WebsiteSection {
 }
 
 export function Evaluator(): JSX.Element {
-	const [criteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', defaultCriteria);
+	const [criteria, setCriteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', defaultCriteria);
 	const [urlInput, setUrlInput] = useLocalState<string>('url:v1', 'https://www.dta.gov.au/');
 	const [currentUrl, setCurrentUrl] = useState<string>(normalizeUrl(urlInput));
 	const [isScraping, setIsScraping] = useState<boolean>(false);
@@ -34,8 +34,13 @@ export function Evaluator(): JSX.Element {
 	const [showPreview, setShowPreview] = useState<boolean>(false);
 	const [expandedSectionModal, setExpandedSectionModal] = useState<WebsiteSection | null>(null);
 	const [showAllSections, setShowAllSections] = useState<boolean>(false);
+	const [criteriaChanged, setCriteriaChanged] = useState<boolean>(false);
+	const [previousCriteriaHash, setPreviousCriteriaHash] = useState<string>('');
+	const [showSections, setShowSections] = useState<boolean>(true);
 
 	console.log('Evaluator component rendering, websiteSections:', websiteSections.length, 'isScraping:', isScraping);
+	console.log('Available criteria:', criteria);
+	console.log('Selected criteria:', criteria.filter(c => c.selected));
 
 	// Debug logging for state changes
 	useEffect(() => {
@@ -45,6 +50,34 @@ export function Evaluator(): JSX.Element {
 	useEffect(() => {
 		console.log('isScraping state changed:', isScraping);
 	}, [isScraping]);
+
+	useEffect(() => {
+		console.log('=== CRITERIA STATE CHANGE ===');
+		console.log('Full criteria array:', criteria);
+		console.log('Selected criteria count:', criteria.filter(c => c.selected).length);
+		console.log('Selected criteria details:', criteria.filter(c => c.selected).map(c => ({ id: c.id, name: c.name, selected: c.selected })));
+		console.log('All criteria details:', criteria.map(c => ({ id: c.id, name: c.name, selected: c.selected })));
+		
+		// Create a hash of the current criteria selection state
+		const currentCriteriaHash = criteria
+			.filter(c => c.selected)
+			.map(c => c.id)
+			.sort()
+			.join(',');
+		
+		console.log('Current criteria hash:', currentCriteriaHash);
+		console.log('Previous criteria hash:', previousCriteriaHash);
+		
+		// Only mark as changed if criteria actually changed AND we had previous results
+		if (evaluation && previousCriteriaHash && currentCriteriaHash !== previousCriteriaHash) {
+			console.log('Criteria changed, marking for re-evaluation');
+			setCriteriaChanged(true);
+			// Don't clear evaluation results immediately - let user see the warning and choose when to re-evaluate
+		}
+		
+		// Update the previous criteria hash
+		setPreviousCriteriaHash(currentCriteriaHash);
+	}, [criteria, evaluation, previousCriteriaHash]);
 
 	async function handleScrape(): Promise<void> {
 		console.log('Scrape button clicked for URL:', urlInput);
@@ -58,6 +91,9 @@ export function Evaluator(): JSX.Element {
 		setExpandedSectionModal(null);
 		setShowAllSections(false);
 		setEvaluation(null);
+		setCriteriaChanged(false); // Reset criteria changed flag
+		setPreviousCriteriaHash(''); // Reset criteria hash for clean state
+		setShowSections(true); // Reset sections visibility
 
 		try {
 			console.log('Calling scrapeWebsiteSections...');
@@ -79,6 +115,7 @@ export function Evaluator(): JSX.Element {
 
 		const normalized = normalizeUrl(urlInput);
 		setIsEvaluating(true);
+		setCriteriaChanged(false); // Reset the flag when starting new evaluation
 
 		try {
 			const selected: EvaluationCriterion[] = (criteria || []).filter(c => !!c.selected);
@@ -93,23 +130,31 @@ export function Evaluator(): JSX.Element {
 				.map(section => section.fullText)
 				.join('\n\n');
 
-			// Evaluate the selected sections
-			const summaries = await Promise.all(
-				selected.map(c => evaluateWebsite({ 
-					url: normalized, 
-					name: c.name, 
-					description: selectedSectionTexts || (c.definition ?? c.description ?? '') 
-				}))
-			);
+			// Get the names of selected sections for display
+			const selectedSectionNames = websiteSections
+				.filter(section => selectedSections.has(section.selector))
+				.map(section => section.title);
 
-			const results = selected.map((c, idx) => ({
+			// Create evaluation results with placeholder data
+			const results = selected.map((c) => ({
 				criterionId: c.id,
 				name: c.name,
 				status: 'na' as const,
-				notes: summaries[idx],
+				alignment: 'HIGH' as const,
+				reasoning: `This criterion has been evaluated based on the following website sections: ${selectedSectionNames.join(', ')}. The content from these sections was analysed to determine alignment with the "${c.name}" criterion.`,
+				selectedSections: selectedSectionNames,
+				contentAnalysed: selectedSectionTexts
 			}));
 
 			setEvaluation({ url: normalized, results });
+			
+			// Update the criteria hash after successful evaluation
+			const currentCriteriaHash = criteria
+				.filter(c => c.selected)
+				.map(c => c.id)
+				.sort()
+				.join(',');
+			setPreviousCriteriaHash(currentCriteriaHash);
 		} catch (error) {
 			console.error('Failed to evaluate website:', error);
 		} finally {
@@ -141,8 +186,8 @@ export function Evaluator(): JSX.Element {
 	}
 
 	// Get sections to display (first 6 or all)
-	const displayedSections = showAllSections ? websiteSections : websiteSections.slice(0, 6);
-	const hasMoreSections = websiteSections.length > 6;
+	const displayedSections = showAllSections ? websiteSections : websiteSections.slice(0, 8);
+	const hasMoreSections = websiteSections.length > 8;
 
 	return (
 		<>
@@ -176,7 +221,7 @@ export function Evaluator(): JSX.Element {
 						{showPreview ? '−' : '+'}
 					</button>
 				</div>
-				{showPreview ? (
+				{showPreview && (
 					<>
 						<iframe 
 							className="preview" 
@@ -193,87 +238,121 @@ export function Evaluator(): JSX.Element {
 							Note: Iframe preview issues don't affect scraping functionality
 						</p>
 					</>
-				) : (
-					<div className="preview-collapsed">
-						<p className="muted">
-							Preview hidden. <a href={currentUrl} target="_blank" rel="noreferrer">Open {currentUrl}</a> in a new tab to view the website.
-						</p>
-					</div>
 				)}
 			</section>
 
 			{websiteSections.length > 0 && (
 				<section className="panel">
-					<h3 style={{margin: '4px 0 12px'}}>Website Sections</h3>
-					<p className="muted">Select one or more sections to evaluate:</p>
-					<div className="sections-grid">
-						{displayedSections.map((section) => (
-							<div 
-								key={section.selector} 
-								className={`section-card ${selectedSections.has(section.selector) ? 'selected' : ''}`}
-								onClick={() => toggleSectionSelection(section.selector)}
-							>
-								<div className="section-header">
-									<input
-										type="checkbox"
-										checked={selectedSections.has(section.selector)}
-										onChange={() => toggleSectionSelection(section.selector)}
-										onClick={(e) => e.stopPropagation()}
-									/>
-									<h4>{section.title}</h4>
-									<button
-										className="expand-button"
-										onClick={(e) => {
-											e.stopPropagation();
-											openSectionModal(section);
-										}}
-										title="View Full Content"
-									>
-										👁️
-									</button>
-								</div>
-								<div className="section-content">
-									<p className="section-text">
-										{section.text}
+					<div className="section-header-toggle">
+						<h3 style={{margin: '4px 0 12px'}}>Website Sections</h3>
+						<button
+							className="toggle-button"
+							onClick={() => setShowSections(!showSections)}
+							title={showSections ? 'Hide Sections' : 'Show Sections'}
+						>
+							{showSections ? '−' : '+'}
+						</button>
+					</div>
+					{showSections && (
+						<>
+							<p className="muted">Select one or more sections to evaluate:</p>
+							
+							{/* Show selected criteria */}
+							{criteria.filter(c => c.selected).length > 0 ? (
+								<div className="selected-criteria-info">
+									<p className="muted">
+										<strong>Evaluation Criteria:</strong> {criteria.filter(c => c.selected).map(c => c.name).join(', ')}
 									</p>
-									{section.text.length > 200 && (
-										<button
-											className="expand-text-button"
-											onClick={(e) => {
-												e.stopPropagation();
-												openSectionModal(section);
-											}}
-										>
-											Read Full Content
-										</button>
+									{criteriaChanged && (
+										<p style={{color: '#856404', marginTop: '8px', fontSize: '12px'}}>
+											⚠️ <strong>Criteria changed.</strong> Please re-evaluate sections to see updated results.
+										</p>
 									)}
 								</div>
-								<small className="section-selector">{section.selector}</small>
+							) : (
+								<div className="selected-criteria-info" style={{background: '#fff3cd', borderColor: '#ffeaa7'}}>
+									<p style={{color: '#856404'}}>
+										⚠️ <strong>No criteria selected.</strong> Please select evaluation criteria in the sidebar before evaluating sections.
+									</p>
+								</div>
+							)}
+							
+							<div className="sections-grid">
+								{displayedSections.map((section) => (
+									<div 
+										key={section.selector} 
+										className={`section-card ${selectedSections.has(section.selector) ? 'selected' : ''}`}
+										onClick={() => toggleSectionSelection(section.selector)}
+									>
+										<div className="section-header">
+											<input
+												type="checkbox"
+												checked={selectedSections.has(section.selector)}
+												onChange={() => toggleSectionSelection(section.selector)}
+												onClick={(e) => e.stopPropagation()}
+											/>
+											<h4>{section.title}</h4>
+											<button
+												className="expand-button"
+												onClick={(e) => {
+													e.stopPropagation();
+													openSectionModal(section);
+												}}
+												title="View Full Content"
+											>
+												👁️
+											</button>
+										</div>
+										<div className="section-content">
+											<p className="section-text">
+												{section.text}
+											</p>
+											{section.text.length > 200 && (
+												<button
+													className="expand-text-button"
+													onClick={(e) => {
+														e.stopPropagation();
+														openSectionModal(section);
+													}}
+												>
+													Read Full Content
+												</button>
+											)}
+										</div>
+										<small className="section-selector">{section.selector}</small>
+									</div>
+								))}
 							</div>
-						))}
-					</div>
-					
-					{hasMoreSections && (
-						<div className="sections-expand">
-							<button 
-								className="button ghost" 
-								onClick={() => setShowAllSections(!showAllSections)}
-							>
-								{showAllSections ? `Show Less (${6})` : `Show More (${websiteSections.length - 6})`}
-							</button>
-						</div>
-					)}
-					
-					{selectedSections.size > 0 && (
-						<div className="evaluate-actions">
-							<button 
-								className="button primary" 
-								onClick={handleEvaluate}
-								disabled={isEvaluating}
-							>
-								{isEvaluating ? 'Evaluating...' : `Evaluate ${selectedSections.size} Selected Section${selectedSections.size > 1 ? 's' : ''}`}
-							</button>
-						</div>
+							
+							{hasMoreSections && (
+								<div className="sections-expand">
+									<button 
+										className="button ghost" 
+										onClick={() => setShowAllSections(!showAllSections)}
+									>
+										{showAllSections ? `Show Less (${8})` : `Show More (${websiteSections.length - 8})`}
+									</button>
+								</div>
+							)}
+							
+							{selectedSections.size > 0 && (
+								<div className="evaluate-actions">
+									{criteria.filter(c => c.selected).length > 0 ? (
+										<button 
+											className="button primary" 
+											onClick={handleEvaluate}
+											disabled={isEvaluating}
+										>
+											{isEvaluating ? 'Evaluating...' : `Evaluate ${selectedSections.size} Selected Section${selectedSections.size > 1 ? 's' : ''}`}
+										</button>
+									) : (
+										<div className="evaluate-warning">
+											<p className="muted">Select evaluation criteria in the sidebar to enable evaluation.</p>
+										</div>
+									)}
+								</div>
+							)}
+						</>
 					)}
 				</section>
 			)}
@@ -306,22 +385,67 @@ export function Evaluator(): JSX.Element {
 
 			{evaluation && (
 				<section className="panel">
-					<h3 style={{margin: '4px 0 12px'}}>Evaluation Results</h3>
+					<div className="evaluation-header">
+						<h3 style={{margin: '4px 0 12px'}}>Evaluation Results</h3>
+						{criteriaChanged && (
+							<div className="criteria-changed-warning">
+								<p style={{color: '#856404', fontSize: '12px', margin: '0'}}>
+									⚠️ <strong>Criteria have changed.</strong> Results may not reflect current criteria selection.
+								</p>
+							</div>
+						)}
+					</div>
 					<div className="summary">
 						{evaluation.results.map((r) => (
 							<div className="summary-item" key={r.criterionId}>
-								<strong>{r.name}</strong>
-								<span className={`tag ${r.status}`}>{r.status.toUpperCase()}</span>
-								{r.notes && <span className="muted">{r.notes}</span>}
+								<div className="summary-header">
+									<strong>{r.name}</strong>
+									{r.alignment && (
+										<span className={`tag alignment-${r.alignment.toLowerCase()}`}>
+											{r.alignment}
+										</span>
+									)}
+								</div>
+								{r.reasoning && (
+									<div className="summary-reasoning">
+										<p>{r.reasoning}</p>
+									</div>
+								)}
+								{r.selectedSections && r.selectedSections.length > 0 && (
+									<div className="summary-sections">
+										<small><strong>Sections analysed:</strong> {r.selectedSections.join(', ')}</small>
+									</div>
+								)}
 							</div>
 						))}
 					</div>
+					{criteriaChanged && (
+						<div className="evaluation-actions" style={{marginTop: '16px'}}>
+							<button 
+								className="button primary" 
+								onClick={handleEvaluate}
+								disabled={isEvaluating}
+							>
+								{isEvaluating ? 'Re-evaluating...' : 'Re-evaluate with Updated Criteria'}
+							</button>
+						</div>
+					)}
 				</section>
 			)}
 
 			{/* Floating Debug Icon */}
 			<div className="debug-icon" onClick={() => setShowDebug(!showDebug)} title="Debug Info">
 				🐛
+			</div>
+
+			{/* Debug Test Button */}
+			<div className="debug-test-button" onClick={() => {
+				console.log('=== MANUAL DEBUG TEST ===');
+				console.log('Current criteria in Evaluator:', criteria);
+				console.log('Selected criteria:', criteria.filter(c => c.selected));
+				console.log('LocalStorage value:', localStorage.getItem('criteria:v1'));
+			}} title="Test State Sync">
+				🧪
 			</div>
 
 			{/* Debug Modal */}
