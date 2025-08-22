@@ -18,7 +18,7 @@ export interface EvaluationResult {
 	alignment?: AlignmentLevel;
 	reasoning?: string;
 	selectedSections?: string[];
-	contentAnalyzed?: string;
+	contentAnalysed?: string;
 	definition?: string; // Added: criterion definition from API response
 }
 
@@ -33,7 +33,7 @@ export interface WebsiteEvaluation {
 	alignment: AlignmentLevel;
 	reasoning: string;
 	selectedSections: string[];
-	contentAnalyzed: string;
+	contentAnalysed: string;
 	evaluatedAt: Date;
 }
 
