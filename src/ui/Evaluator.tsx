@@ -196,7 +196,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			setEvaluationProgress('Sending request to AI service...');
 
 			// Call the real API endpoint
-			const response = await fetch('http://localhost:3001/evaluate', {
+			const response = await fetch('https://handle-evaluation.1zdpzvcg5wea.us-south.codeengine.appdomain.cloud', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
