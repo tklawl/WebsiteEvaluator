@@ -58,3 +58,4 @@ This has been replaced with the more intuitive section-based approach.
 
 # Trigger workflow
 # Manual trigger for GitHub Actions
+# GitHub Actions enabled - triggering deployment
