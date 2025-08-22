@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalState } from '../utils/useLocalState';
-import { defaultCriteria, Evaluation, EvaluationCriterion } from '../utils/model';
+import { defaultCriteria, Evaluation, EvaluationCriterion, EvaluationResult, Website, WebsiteEvaluation } from '../utils/model';
 import { evaluateWebsite } from '../utils/api';
 import { scrapeWebsiteSections } from '../utils/scrape';
 
@@ -20,10 +20,15 @@ interface WebsiteSection {
 	fullText: string;
 }
 
-export function Evaluator(): JSX.Element {
-	const [criteria, setCriteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', defaultCriteria);
-	const [urlInput, setUrlInput] = useLocalState<string>('url:v1', 'https://www.dta.gov.au/');
-	const [currentUrl, setCurrentUrl] = useState<string>(normalizeUrl(urlInput));
+interface EvaluatorProps {
+	website: Website;
+	onWebsiteUpdated: (updatedWebsite: Website) => void;
+}
+
+export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.Element {
+	const [criteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', defaultCriteria);
+	const [urlInput, setUrlInput] = useState<string>(website.url);
+	const [currentUrl, setCurrentUrl] = useState<string>(website.url);
 	const [isScraping, setIsScraping] = useState<boolean>(false);
 	const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
 	const [websiteSections, setWebsiteSections] = useState<WebsiteSection[]>([]);
@@ -38,9 +43,44 @@ export function Evaluator(): JSX.Element {
 	const [previousCriteriaHash, setPreviousCriteriaHash] = useState<string>('');
 	const [showSections, setShowSections] = useState<boolean>(true);
 
+	// Load existing evaluation results when component mounts or website changes
+	useEffect(() => {
+		if (website.evaluations && website.evaluations.length > 0) {
+			// Convert WebsiteEvaluation to Evaluation format for display
+			const existingResults: EvaluationResult[] = website.evaluations.map(evaluation => ({
+				criterionId: evaluation.criterionId,
+				name: criteria.find(c => c.id === evaluation.criterionId)?.name || 'Unknown Criterion',
+				status: 'na' as const,
+				alignment: evaluation.alignment,
+				reasoning: evaluation.reasoning,
+				selectedSections: evaluation.selectedSections,
+				contentAnalyzed: evaluation.contentAnalyzed
+			}));
+
+			const existingEvaluation: Evaluation = {
+				url: website.url,
+				results: existingResults
+			};
+
+			setEvaluation(existingEvaluation);
+			
+			// Set the criteria hash to prevent "criteria changed" warning
+			const currentCriteriaHash = criteria
+				.filter(c => c.selected)
+				.map(c => c.id)
+				.sort()
+				.join(',');
+			setPreviousCriteriaHash(currentCriteriaHash);
+			setCriteriaChanged(false);
+
+			console.log('Loaded existing evaluation results:', existingEvaluation);
+		}
+	}, [website, criteria]);
+
 	console.log('Evaluator component rendering, websiteSections:', websiteSections.length, 'isScraping:', isScraping);
 	console.log('Available criteria:', criteria);
 	console.log('Selected criteria:', criteria.filter(c => c.selected));
+	console.log('Website evaluations:', website.evaluations);
 
 	// Debug logging for state changes
 	useEffect(() => {
@@ -90,7 +130,7 @@ export function Evaluator(): JSX.Element {
 		setExpandedSections(new Set());
 		setExpandedSectionModal(null);
 		setShowAllSections(false);
-		setEvaluation(null);
+		setEvaluation(null); // Clear previous evaluation results when starting new scrape
 		setCriteriaChanged(false); // Reset criteria changed flag
 		setPreviousCriteriaHash(''); // Reset criteria hash for clean state
 		setShowSections(true); // Reset sections visibility
@@ -143,7 +183,7 @@ export function Evaluator(): JSX.Element {
 				alignment: 'HIGH' as const,
 				reasoning: `This criterion has been evaluated based on the following website sections: ${selectedSectionNames.join(', ')}. The content from these sections was analysed to determine alignment with the "${c.name}" criterion.`,
 				selectedSections: selectedSectionNames,
-				contentAnalysed: selectedSectionTexts
+				contentAnalyzed: selectedSectionTexts
 			}));
 
 			setEvaluation({ url: normalized, results });
@@ -155,6 +195,26 @@ export function Evaluator(): JSX.Element {
 				.sort()
 				.join(',');
 			setPreviousCriteriaHash(currentCriteriaHash);
+
+			// Save the evaluation results to the website
+			const websiteEvaluations: WebsiteEvaluation[] = selected.map((c) => ({
+				criterionId: c.id,
+				alignment: 'HIGH',
+				reasoning: `This criterion has been evaluated based on the following website sections: ${selectedSectionNames.join(', ')}. The content from these sections was analysed to determine alignment with the "${c.name}" criterion.`,
+				selectedSections: selectedSectionNames,
+				contentAnalyzed: selectedSectionTexts,
+				evaluatedAt: new Date()
+			}));
+
+			const updatedWebsite: Website = {
+				...website,
+				url: normalized,
+				lastEvaluated: new Date(),
+				evaluations: websiteEvaluations
+			};
+
+			// Call the callback to update the website
+			onWebsiteUpdated(updatedWebsite);
 		} catch (error) {
 			console.error('Failed to evaluate website:', error);
 		} finally {
@@ -241,6 +301,65 @@ export function Evaluator(): JSX.Element {
 				)}
 			</section>
 
+			{/* Show existing evaluation results if available */}
+			{website.evaluations && website.evaluations.length > 0 && (
+				<section className="panel existing-results">
+					<div className="section-header-toggle">
+						<h3 style={{margin: '4px 0 12px'}}>Previous Evaluation Results</h3>
+						<button
+							className="toggle-button"
+							onClick={() => setShowSections(!showSections)}
+							title={showSections ? 'Hide Previous Results' : 'Show Previous Results'}
+						>
+							{showSections ? '−' : '+'}
+						</button>
+					</div>
+					{showSections && (
+						<>
+							<p className="muted">
+								This website was previously evaluated on {new Date(website.lastEvaluated || Date.now()).toLocaleDateString()}. 
+								You can view the results below or re-evaluate with new sections.
+							</p>
+							<div className="summary">
+								{website.evaluations.map((evaluation) => {
+									const criterion = criteria.find(c => c.id === evaluation.criterionId);
+									return (
+										<div className="summary-item" key={evaluation.criterionId}>
+											<div className="summary-header">
+												<strong>{criterion?.name || 'Unknown Criterion'}</strong>
+												<span className={`tag alignment-${evaluation.alignment.toLowerCase()}`}>
+													{evaluation.alignment}
+												</span>
+											</div>
+											{evaluation.reasoning && (
+												<div className="summary-reasoning">
+													<p>{evaluation.reasoning}</p>
+												</div>
+											)}
+											{evaluation.selectedSections && evaluation.selectedSections.length > 0 && (
+												<div className="summary-sections">
+													<small><strong>Previously analysed sections:</strong> {evaluation.selectedSections.join(', ')}</small>
+												</div>
+											)}
+										</div>
+									);
+								})}
+							</div>
+							<div className="evaluate-actions">
+								<button 
+									className="button primary" 
+									onClick={handleScrape}
+									disabled={isScraping}
+								>
+									{isScraping ? 'Scraping...' : 'Re-evaluate Website'}
+								</button>
+							</div>
+						</>
+					)}
+				</section>
+			)}
+
+			{/* Website Sections - only show if we have scraped sections */}
 			{websiteSections.length > 0 && (
 				<section className="panel">
 					<div className="section-header-toggle">
@@ -375,7 +494,7 @@ export function Evaluator(): JSX.Element {
 			{!isScraping && websiteSections.length === 0 && (
 				<section className="panel" style={{background: '#f8f9fa', border: '1px solid #dee2e6'}}>
 					<h3 style={{margin: '4px 0 12px'}}>Ready to Scrape</h3>
-					<p>Enter a website URL above and click "Scrape" to analyze the website content.</p>
+					<p>Enter a website URL above and click "Scrape" to analyse the website content.</p>
 					<p className="muted">
 						<strong>Note:</strong> Some websites may block scraping due to CORS restrictions. 
 						If scraping fails, try the "Test Scraping" button to verify the app is working.
@@ -383,20 +502,27 @@ export function Evaluator(): JSX.Element {
 				</section>
 			)}
 
-			{evaluation && (
+			{/* Evaluation Results - only show if we have new evaluation results */}
+			{evaluation && evaluation.results.length > 0 && websiteSections.length > 0 && (
 				<section className="panel">
 					<div className="evaluation-header">
-						<h3 style={{margin: '4px 0 12px'}}>Evaluation Results</h3>
+						<h3>Evaluation Results</h3>
 						{criteriaChanged && (
 							<div className="criteria-changed-warning">
-								<p style={{color: '#856404', fontSize: '12px', margin: '0'}}>
-									⚠️ <strong>Criteria have changed.</strong> Results may not reflect current criteria selection.
-								</p>
+								⚠️ Criteria changed. Please re-evaluate sections to see updated results.
 							</div>
 						)}
 					</div>
+					
+					{/* Show selected criteria info */}
+					{criteria && criteria.filter(c => c.selected).length > 0 && (
+						<div className="selected-criteria-info">
+							<p><strong>Evaluation Criteria:</strong> {criteria.filter(c => c.selected).map(c => c.name).join(', ')}</p>
+						</div>
+					)}
+
 					<div className="summary">
-						{evaluation.results.map((r) => (
+						{evaluation.results.map((r: any) => (
 							<div className="summary-item" key={r.criterionId}>
 								<div className="summary-header">
 									<strong>{r.name}</strong>
@@ -419,17 +545,6 @@ export function Evaluator(): JSX.Element {
 							</div>
 						))}
 					</div>
-					{criteriaChanged && (
-						<div className="evaluation-actions" style={{marginTop: '16px'}}>
-							<button 
-								className="button primary" 
-								onClick={handleEvaluate}
-								disabled={isEvaluating}
-							>
-								{isEvaluating ? 'Re-evaluating...' : 'Re-evaluate with Updated Criteria'}
-							</button>
-						</div>
-					)}
 				</section>
 			)}
 

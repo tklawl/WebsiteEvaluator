@@ -190,11 +190,12 @@ a { color: var(--accent-strong); }
 
 .criterion:hover { background: #0e233a; cursor: pointer; }
 
+/* Content area spacing */
 .content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 20px 24px;
+  gap: 24px;
+  padding: 24px 28px;
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
@@ -239,19 +240,65 @@ a { color: var(--accent-strong); }
   background: #fff;
 }
 
+/* Button Styles */
 .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--panel);
+  color: var(--ink);
+  text-decoration: none;
+  border: none;
+  outline: none;
+}
+
+.button:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+.button.primary {
   background: var(--accent);
   color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-weight: 600;
+  border-color: var(--accent);
+}
+
+.button.primary:hover {
+  background: color-mix(in srgb, var(--accent) 90%, black);
 }
 
 .button.ghost {
   background: transparent;
-  color: #e8f1ec;
-  border: 1px solid rgba(255,255,255,0.25);
+  border-color: transparent;
+}
+
+.button.ghost:hover {
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+/* Ensure proper button sizing */
+.button.small {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.button.danger {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.button.danger:hover {
+  background: #c82333;
+  border-color: #c82333;
 }
 
 /* Base container constraints */
@@ -259,7 +306,7 @@ a { color: var(--accent-strong); }
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 20px;
   max-width: 100%;
   overflow: hidden;
   box-sizing: border-box;
@@ -939,5 +986,325 @@ a { color: var(--accent-strong); }
   .section-modal-body {
     padding: 20px;
   }
+}
+
+/* HomePage Dashboard Styles */
+.homepage {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.homepage-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.homepage-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  color: var(--ink);
+}
+
+.dashboard-controls {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.add-website-form {
+  margin-bottom: 24px;
+}
+
+.add-website-form h3 {
+  margin: 0 0 16px 0;
+}
+
+/* Form elements spacing */
+.form-row {
+  display: flex;
+  gap: 20px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.form-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+.form-field label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.form-field input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.empty-state h3 {
+  margin: 0 0 16px 0;
+  color: var(--ink);
+}
+
+.empty-state p {
+  margin: 0 0 24px 0;
+  color: var(--ink-subtle);
+}
+
+/* Websites Table Styles */
+.websites-table-container {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.websites-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.websites-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.websites-table th,
+.websites-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.websites-table th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.website-column {
+  min-width: 200px;
+}
+
+.criterion-column {
+  min-width: 120px;
+  text-align: center;
+}
+
+.actions-column {
+  min-width: 80px;
+  text-align: center;
+}
+
+.website-cell {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.website-cell:hover {
+  background-color: var(--bg);
+}
+
+.website-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.website-info strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.website-info small {
+  color: var(--ink-subtle);
+  font-size: 12px;
+}
+
+.last-evaluated {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.status-cell {
+  text-align: center;
+}
+
+.status-indicator {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.actions-cell {
+  text-align: center;
+}
+
+.button.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.button.danger {
+  background: #dc3545;
+  color: white;
+}
+
+.button.danger:hover {
+  background: #c82333;
+}
+
+/* Evaluator Container Styles */
+.evaluator-container {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.evaluator-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.evaluator-header h2 {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* Enhanced spacing for Evaluator sections */
+.evaluator-container .panel {
+  margin-bottom: 24px;
+}
+
+.evaluator-container .panel:last-child {
+  margin-bottom: 0;
+}
+
+/* URL input section spacing */
+.evaluator-container .url-input {
+  margin-bottom: 24px;
+}
+
+/* Website sections spacing */
+.evaluator-container .sections-grid {
+  margin: 20px 0;
+}
+
+.evaluator-container .evaluate-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* Website preview spacing */
+.evaluator-container .preview {
+  margin: 16px 0;
+}
+
+/* Summary spacing */
+.evaluator-container .summary {
+  margin-top: 20px;
+}
+
+.evaluator-container .summary-item {
+  margin-bottom: 20px;
+}
+
+.evaluator-container .summary-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Section header spacing */
+.evaluator-container .section-header-toggle {
+  margin-bottom: 20px;
+}
+
+.evaluator-container .section-header-toggle h3 {
+  margin: 8px 0 16px 0;
+  font-size: 18px;
+  color: var(--ink);
+}
+
+/* Existing results specific spacing */
+.existing-results {
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+  border-color: var(--accent);
+  margin-bottom: 32px;
+}
+
+.existing-results .section-header-toggle h3 {
+  color: var(--accent);
+}
+
+.existing-results .muted {
+  color: var(--accent);
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.existing-results .evaluate-actions {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.existing-results .evaluate-actions .muted {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ink-subtle);
+}
+
+/* Website sections section spacing */
+.evaluator-container .sections-grid {
+  margin: 20px 0;
+}
+
+.evaluator-container .sections-expand {
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* Evaluation results spacing */
+.evaluator-container .evaluation-header {
+  margin-bottom: 20px;
+}
+
+.evaluator-container .selected-criteria-info {
+  margin-bottom: 20px;
+}
+
+.evaluator-container .criteria-changed-warning {
+  margin-bottom: 16px;
 }
 

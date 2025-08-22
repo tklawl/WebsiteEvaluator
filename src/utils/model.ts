@@ -26,6 +26,24 @@ export interface Evaluation {
 	results: EvaluationResult[];
 }
 
+// New interfaces for multi-website support
+export interface WebsiteEvaluation {
+	criterionId: string;
+	alignment: AlignmentLevel;
+	reasoning: string;
+	selectedSections: string[];
+	contentAnalyzed: string;
+	evaluatedAt: Date;
+}
+
+export interface Website {
+	id: string;
+	url: string;
+	name: string;
+	lastEvaluated?: Date;
+	evaluations: WebsiteEvaluation[];
+}
+
 export const defaultCriteria: EvaluationCriterion[] = [
 	{ id: 'accessibility', name: 'Accessibility', selected: true },
 	{ id: 'performance', name: 'Performance', selected: true },
