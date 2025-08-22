@@ -3,6 +3,7 @@ import { useLocalState } from '../utils/useLocalState';
 import { defaultCriteria, Evaluation, EvaluationCriterion, EvaluationResult, Website, WebsiteEvaluation } from '../utils/model';
 import { evaluateWebsite } from '../utils/api';
 import { scrapeWebsiteSections } from '../utils/scrape';
+import { evaluateWebsiteSections as mockEvaluateWebsiteSections, EvaluationRequest } from '../utils/mockApi';
 
 function normalizeUrl(input: string): string {
 	try {
@@ -164,29 +165,33 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 				return;
 			}
 
-			// Get the selected section texts
-			const selectedSectionTexts = websiteSections
+			// Get the selected section data for the API request
+			const selectedSectionData = websiteSections
 				.filter(section => selectedSections.has(section.selector))
-				.map(section => section.fullText)
-				.join('\n\n');
+				.map(section => ({
+					selector: section.selector,
+					title: section.title,
+					content: section.fullText
+				}));
 
-			// Get the names of selected sections for display
-			const selectedSectionNames = websiteSections
-				.filter(section => selectedSections.has(section.selector))
-				.map(section => section.title);
+			console.log('📤 Preparing API request with:', {
+				websiteUrl: normalized,
+				selectedSections: selectedSectionData,
+				criteria: selected
+			});
 
-			// Create evaluation results with placeholder data
-			const results = selected.map((c) => ({
-				criterionId: c.id,
-				name: c.name,
-				status: 'na' as const,
-				alignment: 'HIGH' as const,
-				reasoning: `This criterion has been evaluated based on the following website sections: ${selectedSectionNames.join(', ')}. The content from these sections was analysed to determine alignment with the "${c.name}" criterion.`,
-				selectedSections: selectedSectionNames,
-				contentAnalyzed: selectedSectionTexts
-			}));
+			// Create the API request
+			const apiRequest: EvaluationRequest = {
+				websiteUrl: normalized,
+				selectedSections: selectedSectionData,
+				criteria: selected
+			};
 
-			setEvaluation({ url: normalized, results });
+			// Call the mock API endpoint
+			const apiResponse = await mockEvaluateWebsiteSections(apiRequest);
+
+			// Set the evaluation results from the API response
+			setEvaluation({ url: normalized, results: apiResponse.results });
 			
 			// Update the criteria hash after successful evaluation
 			const currentCriteriaHash = criteria
@@ -197,12 +202,12 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			setPreviousCriteriaHash(currentCriteriaHash);
 
 			// Save the evaluation results to the website
-			const websiteEvaluations: WebsiteEvaluation[] = selected.map((c) => ({
-				criterionId: c.id,
-				alignment: 'HIGH',
-				reasoning: `This criterion has been evaluated based on the following website sections: ${selectedSectionNames.join(', ')}. The content from these sections was analysed to determine alignment with the "${c.name}" criterion.`,
-				selectedSections: selectedSectionNames,
-				contentAnalyzed: selectedSectionTexts,
+			const websiteEvaluations: WebsiteEvaluation[] = apiResponse.results.map((result) => ({
+				criterionId: result.criterionId,
+				alignment: result.alignment || 'HIGH',
+				reasoning: result.reasoning || '',
+				selectedSections: result.selectedSections || [],
+				contentAnalyzed: result.contentAnalyzed || '',
 				evaluatedAt: new Date()
 			}));
 
@@ -215,8 +220,11 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 
 			// Call the callback to update the website
 			onWebsiteUpdated(updatedWebsite);
+
 		} catch (error) {
 			console.error('Failed to evaluate website:', error);
+			// Show error message to user
+			alert('Evaluation failed. Please try again.');
 		} finally {
 			setIsEvaluating(false);
 		}
@@ -532,6 +540,11 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 										</span>
 									)}
 								</div>
+								{r.definition && (
+									<div className="summary-definition">
+										<small><strong>Definition:</strong> {r.definition}</small>
+									</div>
+								)}
 								{r.reasoning && (
 									<div className="summary-reasoning">
 										<p>{r.reasoning}</p>
@@ -539,7 +552,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 								)}
 								{r.selectedSections && r.selectedSections.length > 0 && (
 									<div className="summary-sections">
-										<small><strong>Sections analysed:</strong> {r.selectedSections.join(', ')}</small>
+										<small><strong>Sections analyzed:</strong> {r.selectedSections.join(', ')}</small>
 									</div>
 								)}
 							</div>

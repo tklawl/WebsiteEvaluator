@@ -332,6 +332,7 @@ a { color: var(--accent-strong); }
   overflow: hidden;
 }
 
+/* Summary items with fixed height and overflow */
 .summary-item {
   display: flex;
   flex-direction: column;
@@ -343,27 +344,41 @@ a { color: var(--accent-strong); }
   max-width: 100%;
   overflow: hidden;
   word-wrap: break-word;
+  height: 200px; /* Fixed height */
+  box-sizing: border-box;
 }
 
-.summary-header {
+.summary-item .summary-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 12px;
+  margin-bottom: 12px;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
-.summary-header strong {
-  font-size: 16px;
-  color: var(--ink);
+.summary-item .summary-definition {
+  margin-bottom: 12px;
+  flex-shrink: 0; /* Prevent definition from shrinking */
 }
 
-.summary-reasoning {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+.summary-item .summary-definition small {
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1.4;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Ensure text content doesn't overflow */
-.summary-reasoning p {
+.summary-item .summary-reasoning {
+  flex: 1; /* Take remaining space */
+  overflow-y: auto; /* Make scrollable */
+  min-height: 0; /* Allow flex item to shrink */
+  padding-right: 8px; /* Add padding for scrollbar */
+}
+
+.summary-item .summary-reasoning p {
   margin: 0 0 16px 0;
   line-height: 1.5;
   color: var(--ink-subtle);
@@ -371,19 +386,43 @@ a { color: var(--accent-strong); }
   word-wrap: break-word;
   word-break: break-word;
   max-width: 100%;
+  /* Remove text clamping since we now have scrolling */
 }
 
-.summary-sections {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+/* Custom scrollbar styling for better appearance */
+.summary-item .summary-reasoning::-webkit-scrollbar {
+  width: 6px;
 }
 
-.summary-sections small {
+.summary-item .summary-reasoning::-webkit-scrollbar-track {
+  background: var(--bg);
+  border-radius: 3px;
+}
+
+.summary-item .summary-reasoning::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.summary-item .summary-reasoning::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-subtle);
+}
+
+.summary-item .summary-sections {
+  flex-shrink: 0; /* Prevent footer from shrinking */
+  margin-top: auto; /* Push to bottom */
+}
+
+.summary-item .summary-sections small {
   color: var(--ink-subtle);
   font-size: 12px;
   word-wrap: break-word;
   word-break: break-word;
   max-width: 100%;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Tag styles */

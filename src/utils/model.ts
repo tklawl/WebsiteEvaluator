@@ -19,6 +19,7 @@ export interface EvaluationResult {
 	reasoning?: string;
 	selectedSections?: string[];
 	contentAnalyzed?: string;
+	definition?: string; // Added: criterion definition from API response
 }
 
 export interface Evaluation {
