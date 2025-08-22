@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
 	plugins: [react()],
+  base: '/WebsiteEvaluator/', // GitHub Pages base path
   resolve: {
     alias: {
       '@': '/src'
@@ -10,6 +11,10 @@ export default defineConfig({
   },
   server: {
     port: 5173
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false
   }
 });
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalState } from '../utils/useLocalState';
 import { defaultCriteria, Evaluation, EvaluationCriterion, EvaluationResult, Website, WebsiteEvaluation } from '../utils/model';
-import { evaluateWebsite } from '../utils/api';
 import { scrapeWebsiteSections } from '../utils/scrape';
 
 function normalizeUrl(input: string): string {
