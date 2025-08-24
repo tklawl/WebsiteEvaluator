@@ -120,9 +120,15 @@ a { color: var(--accent-strong); }
   gap: 6px 8px;
   padding: 6px 4px;
   border-radius: 6px;
+  transition: all 0.2s ease;
 }
 
-.criterion-name { flex: 1; }
+
+
+.criterion-name { 
+  color: #d8e2ee;
+  font-weight: 500;
+}
 
 .icon-button {
   background: transparent;
@@ -714,6 +720,31 @@ a { color: var(--accent-strong); }
   
   .section-header h4 {
     font-size: 14px;
+  }
+
+  .floating-batch-button {
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+  }
+
+  .batch-modal {
+    width: 95vw;
+    margin: 10px;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+  }
+
+  .modal-header h2 {
+    font-size: 18px;
+  }
+
+  .modal-body {
+    padding: 20px;
   }
 }
 
@@ -2014,25 +2045,45 @@ a { color: var(--accent-strong); }
 }
 
 .import-export-modal-body {
-  padding: 20px;
+  padding: 24px;
 }
 
 .import-export-modal-body p {
-  margin: 0 0 16px 0;
+  margin: 0 0 20px 0;
   color: var(--ink-subtle);
+  line-height: 1.5;
 }
 
 .json-preview,
 .json-input {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .json-preview label,
-.json-input label {
+.json-input label,
+.import-export-modal-body .field label {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
   color: var(--ink);
+  font-size: 14px;
+}
+
+.import-export-modal-body .field {
+  margin-bottom: 20px;
+}
+
+.import-export-modal-body .field:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Modal button overrides */
+.import-export-modal-body .import-actions .button {
+  min-width: 120px;
+}
+
+.import-export-modal-body .import-actions .button.primary {
+  order: -1; /* Put primary button first (left) */
 }
 
 .json-textarea {
@@ -2058,7 +2109,8 @@ a { color: var(--accent-strong); }
 .import-actions {
   display: flex;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-top: 24px;
+  justify-content: flex-end;
 }
 
 .error-message {
@@ -2067,7 +2119,7 @@ a { color: var(--accent-strong); }
   padding: 12px;
   border-radius: 6px;
   border: 1px solid #fecaca;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   font-size: 14px;
 }
 
@@ -2080,12 +2132,215 @@ a { color: var(--accent-strong); }
   
   .export-actions,
   .import-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
+    gap: 8px;
   }
   
   .export-actions .button,
   .import-actions .button {
     width: 100%;
   }
+}
+
+/* Batch Evaluator Styles */
+.batch-evaluator {
+  margin-bottom: 24px;
+}
+
+.batch-evaluator-header h3 {
+  margin: 0 0 8px 0;
+  color: var(--ink);
+}
+
+.batch-evaluator-actions {
+  text-align: center;
+}
+
+.batch-evaluator-actions p {
+  margin: 12px 0 0 0;
+  color: var(--ink-subtle);
+}
+
+.batch-evaluator-progress {
+  padding: 20px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.progress-header h4 {
+  margin: 0;
+  color: var(--ink);
+}
+
+.progress-count {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.current-website {
+  text-align: center;
+  margin: 16px 0;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.batch-evaluator-complete {
+  text-align: center;
+  padding: 20px;
+  background: #e7f9ef;
+  border: 1px solid #1c7a43;
+  border-radius: var(--radius);
+}
+
+.success-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1c7a43;
+  margin-bottom: 12px;
+}
+
+.batch-evaluator-error {
+  text-align: center;
+  padding: 20px;
+  background: #fee;
+  border: 1px solid #dc3545;
+  border-radius: var(--radius);
+}
+
+.error-message {
+  font-size: 18px;
+  font-weight: 600;
+  color: #dc3545;
+  margin-bottom: 12px;
+}
+
+.error-details {
+  color: #721c24;
+  margin-bottom: 16px;
+}
+
+/* Floating Button and Modal Styles */
+.floating-batch-button {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.floating-batch-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  background: var(--accent-hover);
+}
+
+.floating-batch-button:active {
+  transform: translateY(0);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.batch-modal {
+  width: 600px;
+  max-width: 90vw;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--ink-subtle);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: var(--border);
+  color: var(--ink);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 

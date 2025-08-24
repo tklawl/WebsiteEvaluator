@@ -75,8 +75,8 @@ export function App(): JSX.Element {
 		);
 		localStorage.setItem('websites:v1', JSON.stringify(updatedWebsites));
 		
-		// Navigate back to home
-		navigateToHome();
+		// Update the selected website state to show the new evaluation results
+		setSelectedWebsite(updatedWebsite);
 	}
 
 	return (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLocalState } from '../utils/useLocalState';
 import { EvaluationCriterion, WebsiteEvaluation } from '../utils/model';
+import { BatchEvaluator } from './BatchEvaluator';
 
 interface Website {
 	id: string;
@@ -13,10 +14,9 @@ interface Website {
 export function HomePage(): JSX.Element {
 	const [websites, setWebsites] = useLocalState<Website[]>('websites:v1', []);
 	const [criteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', []);
-	const [showAddForm, setShowAddForm] = useState<boolean>(false);
-	const [websiteEntries, setWebsiteEntries] = useState<Array<{ id: string; url: string; name: string }>>([
-		{ id: '1', url: '', name: '' }
-	]);
+	const [showAddForm, setShowAddForm] = useState(false);
+	const [websiteEntries, setWebsiteEntries] = useState([{ id: '1', url: '', name: '' }]);
+	const [showBatchModal, setShowBatchModal] = useState(false);
 	const [llmResponse, setLlmResponse] = useState<any>(null);
 	const [isCallingLlm, setIsCallingLlm] = useState<boolean>(false);
 
@@ -59,6 +59,12 @@ export function HomePage(): JSX.Element {
 	function cancelAddWebsites(): void {
 		setWebsiteEntries([{ id: '1', url: '', name: '' }]);
 		setShowAddForm(false);
+	}
+
+	function handleWebsiteUpdated(updatedWebsite: Website): void {
+		setWebsites(prev => prev.map(w => 
+			w.id === updatedWebsite.id ? updatedWebsite : w
+		));
 	}
 
 	function removeWebsite(id: string): void {
@@ -307,6 +313,42 @@ export function HomePage(): JSX.Element {
 					</div>
 				)}
 			</section>
+
+			{/* Floating Batch Evaluation Button */}
+			{websites.length > 0 && (
+				<button 
+					className="floating-batch-button"
+					onClick={() => setShowBatchModal(true)}
+					title="Batch Evaluate All Websites"
+				>
+					🚀
+				</button>
+			)}
+
+			{/* Batch Evaluation Modal */}
+			{showBatchModal && (
+				<div className="modal-overlay" onClick={() => setShowBatchModal(false)}>
+					<div className="modal-content batch-modal" onClick={e => e.stopPropagation()}>
+						<div className="modal-header">
+							<h2>Batch Evaluation</h2>
+							<button 
+								className="modal-close"
+								onClick={() => setShowBatchModal(false)}
+							>
+								×
+							</button>
+						</div>
+						<div className="modal-body">
+							<BatchEvaluator
+								websites={websites}
+								criteria={criteria}
+								onWebsiteUpdated={handleWebsiteUpdated}
+								onComplete={() => setShowBatchModal(false)}
+							/>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

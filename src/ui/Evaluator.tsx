@@ -226,6 +226,10 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 				evaluationSummary: apiResponse.evaluationSummary
 			} as any);
 			
+			// Minimize both Previous Results and Website Sections sections after evaluation
+			setShowPreviousResults(false);
+			setShowSections(false);
+			
 			// Update the criteria hash after successful evaluation
 			const currentCriteriaHash = criteria
 				.map(c => c.id)
@@ -709,11 +713,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 												{r.alignment}
 											</span>
 										)}
-										{r.status && (
-											<span className={`tag status-${r.status}`}>
-												{r.status}
-											</span>
-										)}
+										
 									</div>
 								</div>
 								{r.reasoning && (
