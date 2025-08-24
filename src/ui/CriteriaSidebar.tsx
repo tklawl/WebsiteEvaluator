@@ -338,7 +338,7 @@ export function CriteriaSidebar(): JSX.Element {
 				<button type="button" className="button" onClick={() => openModal('import')}>Import</button>
 			</div>
 			<div className="toolbar-right">
-				<button type="button" className="button" onClick={onAdd}>Add criterion</button>
+				<button type="button" className="button" onClick={onAdd}>+</button>
 			</div>
 		</div>
 		<div className="criteria-list">
