@@ -13,6 +13,7 @@ export function App(): JSX.Element {
 	const [isResizing, setIsResizing] = useState<boolean>(false);
 	const [currentView, setCurrentView] = useState<View>('home');
 	const [selectedWebsite, setSelectedWebsite] = useState<Website | null>(null);
+	const [sidebarVisible, setSidebarVisible] = useLocalState<boolean>('ui:sidebarVisible:v1', true);
 
 	const onMouseMove = useCallback((e: MouseEvent) => {
 		if (!containerRef.current) return;
@@ -82,19 +83,30 @@ export function App(): JSX.Element {
 	return (
 		<div
 			ref={containerRef}
-			className={`app-shell${isResizing ? ' resizing' : ''}`}
-			style={{ gridTemplateColumns: `${Math.round(sidebarWidth)}px 1fr` }}
+			className={`app-shell${isResizing ? ' resizing' : ''}${!sidebarVisible ? ' sidebar-hidden' : ''}`}
+			style={{ gridTemplateColumns: sidebarVisible ? `${Math.round(sidebarWidth)}px 1fr` : '1fr' }}
 		>
-			<aside className="sidebar">
-				<a className="brand" href="https://www.dta.gov.au/" target="_blank" rel="noreferrer" aria-label="Digital Transformation Agency">
-					<img src="https://www.dta.gov.au/themes/custom/dta-gov-au/images/dta-wordmark-white.svg?v=4bffd53f" alt="Digital Transformation Agency" />
-				</a>
-				<h1>AI Transparency Statement Evaluator</h1>
-				<p className="muted">Select criteria to assess</p>
-				<CriteriaSidebar />
-				<div className="resizer" onMouseDown={startResizing} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" />
-			</aside>
+			{sidebarVisible && (
+				<aside className="sidebar">
+					<a className="brand" href="https://www.dta.gov.au/" target="_blank" rel="noreferrer" aria-label="Digital Transformation Agency">
+						<img src="https://www.dta.gov.au/themes/custom/dta-gov-au/images/dta-wordmark-white.svg?v=4bffd53f" alt="Digital Transformation Agency" />
+					</a>
+					<h1>AI Transparency Statement Evaluator</h1>
+					<p className="muted">Select criteria to assess</p>
+					<CriteriaSidebar />
+					<div className="resizer" onMouseDown={startResizing} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" />
+				</aside>
+			)}
 			<main className="content">
+				<div className="content-header">
+					<button 
+						className="sidebar-toggle"
+						onClick={() => setSidebarVisible(!sidebarVisible)}
+						aria-label={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
+					>
+						{sidebarVisible ? '◀' : '▶'}
+					</button>
+				</div>
 				{currentView === 'home' ? (
 					<HomePage />
 				) : (
