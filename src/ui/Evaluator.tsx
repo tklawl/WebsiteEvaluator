@@ -45,6 +45,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 	const [showSections, setShowSections] = useState<boolean>(true);
 	const [evaluationAbortController, setEvaluationAbortController] = useState<AbortController | null>(null);
 	const [evaluationProgress, setEvaluationProgress] = useState<string>('');
+	const [autoSelectedSections, setAutoSelectedSections] = useState<Set<string>>(new Set());
 
 	// Load existing evaluation results when component mounts or website changes
 	useEffect(() => {
@@ -69,7 +70,6 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			
 			// Set the criteria hash to prevent "criteria changed" warning
 			const currentCriteriaHash = criteria
-				.filter(c => c.selected)
 				.map(c => c.id)
 				.sort()
 				.join(',');
@@ -82,7 +82,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 
 	console.log('Evaluator component rendering, websiteSections:', websiteSections.length, 'isScraping:', isScraping);
 	console.log('Available criteria:', criteria);
-	console.log('Selected criteria:', criteria.filter(c => c.selected));
+	console.log('All criteria:', criteria);
 	console.log('Website evaluations:', website.evaluations);
 
 	// Debug logging for state changes
@@ -97,13 +97,11 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 	useEffect(() => {
 		console.log('=== CRITERIA STATE CHANGE ===');
 		console.log('Full criteria array:', criteria);
-		console.log('Selected criteria count:', criteria.filter(c => c.selected).length);
-		console.log('Selected criteria details:', criteria.filter(c => c.selected).map(c => ({ id: c.id, name: c.name, selected: c.selected })));
-		console.log('All criteria details:', criteria.map(c => ({ id: c.id, name: c.name, selected: c.selected })));
+		console.log('All criteria count:', criteria.length);
+		console.log('All criteria details:', criteria.map(c => ({ id: c.id, name: c.name })));
 		
-		// Create a hash of the current criteria selection state
+		// Create a hash of the current criteria state
 		const currentCriteriaHash = criteria
-			.filter(c => c.selected)
 			.map(c => c.id)
 			.sort()
 			.join(',');
@@ -130,6 +128,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 		setIsScraping(true);
 		setWebsiteSections([]);
 		setSelectedSections(new Set());
+		setAutoSelectedSections(new Set());
 		setExpandedSections(new Set());
 		setExpandedSectionModal(null);
 		setShowAllSections(false);
@@ -145,6 +144,11 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			console.log('Scraping completed, sections returned:', sections);
 			setWebsiteSections(sections);
 			console.log('Website sections state updated');
+			
+			// Auto-select sections containing AI-related content
+			if (sections.length > 0) {
+				autoSelectAISections(sections);
+			}
 		} catch (error) {
 			console.error('Failed to scrape website:', error);
 			setWebsiteSections([]);
@@ -160,9 +164,9 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			return;
 		}
 
-		const selected = criteria.filter(c => c.selected);
-		if (selected.length === 0) {
-			alert('Please select at least one evaluation criterion.');
+		const allCriteria = criteria;
+		if (allCriteria.length === 0) {
+			alert('No evaluation criteria available.');
 			return;
 		}
 
@@ -189,7 +193,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			const apiRequest = {
 				websiteUrl: normalized,
 				selectedSections: selectedSectionData,
-				criteria: selected
+				criteria: allCriteria
 			};
 
 			console.log('🚀 Sending evaluation request to API:', apiRequest);
@@ -224,7 +228,6 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			
 			// Update the criteria hash after successful evaluation
 			const currentCriteriaHash = criteria
-				.filter(c => c.selected)
 				.map(c => c.id)
 				.sort()
 				.join(',');
@@ -274,6 +277,52 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 			newSelected.add(selector);
 		}
 		setSelectedSections(newSelected);
+	}
+
+	function shouldAutoSelectSection(section: WebsiteSection): boolean {
+		const text = section.text;
+		const title = section.title;
+		const fullText = section.fullText || '';
+		
+		// Check for AI-related keywords in text, title, or full text
+		const aiKeywords = ['AI', 'A.I.', 'Artificial Intelligence', 'artificial intelligence', 'Transparency'];
+		
+		// Count total occurrences across all fields
+		let totalOccurrences = 0;
+		
+		aiKeywords.forEach(keyword => {
+			// Count in full text
+			const fullTextMatches = (fullText.match(new RegExp(keyword, 'g')) || []).length;
+			
+			totalOccurrences += fullTextMatches;
+		});
+		
+		// Debug logging
+		console.log(`Section "${section.title}": ${totalOccurrences} total matches (threshold: 5)`);
+		if (totalOccurrences > 0) {
+			console.log(`  - Text: "${text.substring(0, 100)}..."`);
+			console.log(`  - Title: "${title}"`);
+			console.log(`  - Full text length: ${fullText.length}`);
+		}
+		
+		// Require at least 5 total mentions across all fields
+		return totalOccurrences >= 6;
+	}
+
+	function autoSelectAISections(sections: WebsiteSection[]): void {
+		const aiSections = new Set<string>();
+		
+		sections.forEach(section => {
+			if (shouldAutoSelectSection(section)) {
+				aiSections.add(section.selector);
+			}
+		});
+		
+		if (aiSections.size > 0) {
+			setSelectedSections(aiSections);
+			setAutoSelectedSections(aiSections);
+			console.log(`Auto-selected ${aiSections.size} AI-related sections:`, Array.from(aiSections));
+		}
 	}
 
 	function openSectionModal(section: WebsiteSection): void {
@@ -462,11 +511,20 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 						<>
 							<p className="muted">Select one or more sections to evaluate:</p>
 							
+							{/* Show auto-selection info */}
+							{autoSelectedSections.size > 0 && (
+								<div className="auto-selection-info">
+									<p className="muted">
+										🤖 <strong>AI Auto-Selection:</strong> {autoSelectedSections.size} section{autoSelectedSections.size > 1 ? 's' : ''} containing AI-related content {autoSelectedSections.size > 1 ? 'were' : 'was'} automatically selected.
+									</p>
+								</div>
+							)}
+							
 							{/* Show selected criteria */}
-							{criteria.filter(c => c.selected).length > 0 ? (
+							{criteria.length > 0 ? (
 								<div className="selected-criteria-info">
 									<p className="muted">
-										<strong>Evaluation Criteria:</strong> {criteria.filter(c => c.selected).map(c => c.name).join(', ')}
+										<strong>Evaluation Criteria:</strong> {criteria.map(c => c.name).join(', ')}
 									</p>
 									{criteriaChanged && (
 										<p style={{color: '#856404', marginTop: '8px', fontSize: '12px'}}>
@@ -477,7 +535,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 							) : (
 								<div className="selected-criteria-info" style={{background: '#fff3cd', borderColor: '#ffeaa7'}}>
 									<p style={{color: '#856404'}}>
-										⚠️ <strong>No criteria selected.</strong> Please select evaluation criteria in the sidebar before evaluating sections.
+										⚠️ <strong>No criteria available.</strong> Please add evaluation criteria in the sidebar.
 									</p>
 								</div>
 							)}
@@ -497,6 +555,11 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 												onClick={(e) => e.stopPropagation()}
 											/>
 											<h4>{section.title}</h4>
+											{autoSelectedSections.has(section.selector) && (
+												<span className="ai-indicator" title="Auto-selected - contains AI-related content">
+													🤖 AI
+												</span>
+											)}
 											<button
 												className="expand-button"
 												onClick={(e) => {
@@ -542,7 +605,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 							
 							{selectedSections.size > 0 && (
 								<div className="evaluate-actions">
-									{criteria.filter(c => c.selected).length > 0 ? (
+									{criteria.length > 0 ? (
 										<button 
 											className="button primary" 
 											onClick={handleEvaluate}
@@ -552,7 +615,7 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 										</button>
 									) : (
 										<div className="evaluate-warning">
-											<p className="muted">Select evaluation criteria in the sidebar to enable evaluation.</p>
+											<p className="muted">Add evaluation criteria in the sidebar to enable evaluation.</p>
 										</div>
 									)}
 								</div>
@@ -601,9 +664,9 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 					</div>
 					
 					{/* Show selected criteria info */}
-					{criteria && criteria.filter(c => c.selected).length > 0 && (
+					{criteria && criteria.length > 0 && (
 						<div className="selected-criteria-info">
-							<p><strong>Evaluation Criteria:</strong> {criteria.filter(c => c.selected).map(c => c.name).join(', ')}</p>
+							<p><strong>Evaluation Criteria:</strong> {criteria.map(c => c.name).join(', ')}</p>
 						</div>
 					)}
 
@@ -758,4 +821,3 @@ export function Evaluator({ website, onWebsiteUpdated }: EvaluatorProps): JSX.El
 		</>
 	);
 }
-

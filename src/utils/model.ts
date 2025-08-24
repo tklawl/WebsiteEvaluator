@@ -6,7 +6,6 @@ export interface EvaluationCriterion {
 	name: string;
 	description?: string;
 	definition?: string;
-	selected?: boolean;
 }
 
 export interface EvaluationResult {
@@ -46,18 +45,17 @@ export interface Website {
 }
 
 export const defaultCriteria: EvaluationCriterion[] = [
-	{ id: 'accessibility', name: 'Accessibility', selected: true },
-	{ id: 'performance', name: 'Performance', selected: true },
-	{ id: 'security', name: 'Security headers', selected: true },
-	{ id: 'metadata', name: 'Metadata', selected: true },
-	{ id: 'content', name: 'Content quality', selected: false },
+	{ id: 'accessibility', name: 'Accessibility' },
+	{ id: 'performance', name: 'Performance' },
+	{ id: 'security', name: 'Security headers' },
+	{ id: 'metadata', name: 'Metadata' },
+	{ id: 'content', name: 'Content quality' },
 ];
 
 export function evaluateAgainstCriteria(url: string, criteria: EvaluationCriterion[]): Evaluation {
 	// Placeholder client-side heuristics. In a real app you'd call a backend.
 	const hostname = safeParseHostname(url);
 	const results: EvaluationResult[] = criteria
-		.filter(c => c.selected)
 		.map((c): EvaluationResult => {
 			switch (c.id) {
 				case 'accessibility':

@@ -14,22 +14,50 @@ export function HomePage(): JSX.Element {
 	const [websites, setWebsites] = useLocalState<Website[]>('websites:v1', []);
 	const [criteria] = useLocalState<EvaluationCriterion[]>('criteria:v1', []);
 	const [showAddForm, setShowAddForm] = useState<boolean>(false);
-	const [newWebsite, setNewWebsite] = useState<{ url: string; name: string }>({ url: '', name: '' });
+	const [websiteEntries, setWebsiteEntries] = useState<Array<{ id: string; url: string; name: string }>>([
+		{ id: '1', url: '', name: '' }
+	]);
 	const [llmResponse, setLlmResponse] = useState<any>(null);
 	const [isCallingLlm, setIsCallingLlm] = useState<boolean>(false);
 
-	function addWebsite(): void {
-		if (!newWebsite.url.trim() || !newWebsite.name.trim()) return;
+	function addWebsiteRow(): void {
+		const newId = (websiteEntries.length + 1).toString();
+		setWebsiteEntries(prev => [...prev, { id: newId, url: '', name: '' }]);
+	}
 
-		const website: Website = {
+	function removeWebsiteRow(id: string): void {
+		if (websiteEntries.length > 1) {
+			setWebsiteEntries(prev => prev.filter(entry => entry.id !== id));
+		}
+	}
+
+	function updateWebsiteEntry(id: string, field: 'url' | 'name', value: string): void {
+		setWebsiteEntries(prev => prev.map(entry => 
+			entry.id === id ? { ...entry, [field]: value } : entry
+		));
+	}
+
+	function addWebsites(): void {
+		const validEntries = websiteEntries.filter(entry => 
+			entry.url.trim() && entry.name.trim()
+		);
+
+		if (validEntries.length === 0) return;
+
+		const newWebsites: Website[] = validEntries.map(entry => ({
 			id: `website-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-			url: newWebsite.url.trim(),
-			name: newWebsite.name.trim(),
+			url: entry.url.trim(),
+			name: entry.name.trim(),
 			evaluations: []
-		};
+		}));
 
-		setWebsites(prev => [...prev, website]);
-		setNewWebsite({ url: '', name: '' });
+		setWebsites(prev => [...prev, ...newWebsites]);
+		setWebsiteEntries([{ id: '1', url: '', name: '' }]);
+		setShowAddForm(false);
+	}
+
+	function cancelAddWebsites(): void {
+		setWebsiteEntries([{ id: '1', url: '', name: '' }]);
 		setShowAddForm(false);
 	}
 
@@ -139,32 +167,46 @@ export function HomePage(): JSX.Element {
 
 			{showAddForm && (
 				<section className="add-website-form panel">
-					<h3>Add New Website</h3>
-					<div className="form-row">
-						<div className="form-field">
-							<label htmlFor="website-name">Website Name</label>
-							<input
-								id="website-name"
-								type="text"
-								placeholder="Enter website name"
-								value={newWebsite.name}
-								onChange={(e) => setNewWebsite(prev => ({ ...prev, name: e.target.value }))}
-							/>
-						</div>
-						<div className="form-field">
-							<label htmlFor="website-url">Website URL</label>
-							<input
-								id="website-url"
-								type="url"
-								placeholder="https://example.com"
-								value={newWebsite.url}
-								onChange={(e) => setNewWebsite(prev => ({ ...prev, url: e.target.value }))}
-							/>
-						</div>
-						<div className="form-actions">
-							<button className="button" onClick={addWebsite}>Add Website</button>
-							<button className="button ghost" onClick={() => setShowAddForm(false)}>Cancel</button>
-						</div>
+					<h3>Add New Websites</h3>
+					<div className="add-website-rows">
+						{websiteEntries.map(entry => (
+							<div key={entry.id} className="add-website-row">
+								<div className="form-field">
+									<label htmlFor={`website-name-${entry.id}`}>Website Name</label>
+									<input
+										id={`website-name-${entry.id}`}
+										type="text"
+										placeholder="Enter website name"
+										value={entry.name}
+										onChange={(e) => updateWebsiteEntry(entry.id, 'name', e.target.value)}
+									/>
+								</div>
+								<div className="form-field">
+									<label htmlFor={`website-url-${entry.id}`}>Website URL</label>
+									<input
+										id={`website-url-${entry.id}`}
+										type="url"
+										placeholder="https://example.com"
+										value={entry.url}
+										onChange={(e) => updateWebsiteEntry(entry.id, 'url', e.target.value)}
+									/>
+								</div>
+								{websiteEntries.length > 1 && (
+									<button 
+										className="button small danger" 
+										onClick={() => removeWebsiteRow(entry.id)}
+										title="Remove website row"
+									>
+										🗑️
+									</button>
+								)}
+							</div>
+						))}
+					</div>
+					<div className="form-actions">
+						<button className="button small" onClick={addWebsiteRow}>+ Add Another Website</button>
+						<button className="button" onClick={addWebsites}>Add All Websites</button>
+						<button className="button ghost" onClick={cancelAddWebsites}>Cancel</button>
 					</div>
 				</section>
 			)}
